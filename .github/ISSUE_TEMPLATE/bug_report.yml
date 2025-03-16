@@ -1,0 +1,37 @@
+name: Bug Report
+description: File a bug report
+labels: ["bug"]
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Make sure you have done the following
+      options:
+        - label: Updated to the latest version of `blink.pairs`
+          required: true
+        - label: Searched for existing issues and documentation
+          required: true
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+    validations: { required: true }
+  - type: textarea
+    id: user-config
+    attributes:
+      label: Relevant configuration
+      description: Copypaste the part of the config relevant to the bug. Do not paste the entire default config.
+      render: lua
+    validations: { required: false }
+  - type: input
+    id: version-info
+    attributes:
+      label: "`neovim` version"
+      placeholder: "output of `nvim --version`"
+    validations: { required: true }
+  - type: input
+    id: branch-or-tag
+    attributes:
+      label: "`blink.pick` version"
+      placeholder: "examples: main, d2b411c or v0.9.2"
+    validations: { required: true }
