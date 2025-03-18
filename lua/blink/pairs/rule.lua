@@ -62,8 +62,10 @@ function M.parse(definitions)
       end
     end
 
-    -- Sort by priority
-    table.sort(rules[key], function(a, b) return a.priority > b.priority end)
+    if rules[key] ~= nil then
+      -- Sort by priority
+      table.sort(rules[key], function(a, b) return a.priority > b.priority end)
+    end
   end
 
   return rules
