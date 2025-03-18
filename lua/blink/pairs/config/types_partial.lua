@@ -7,8 +7,7 @@
 --- @field enabled? boolean
 --- @field pairs? blink.pairs.RuleDefinitions
 
---- @class (exact) blink.pairs.RuleDefinitions
---- @field [string] string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]
+--- @alias blink.pairs.RuleDefinitions table<string, string | blink.pairs.RuleDefinition | blink.pairs.RuleDefinition[]>
 
 --- @class (exact) blink.pairs.RuleDefinition
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})

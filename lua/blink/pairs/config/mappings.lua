@@ -2,6 +2,7 @@
 --- @field enabled boolean
 --- @field pairs blink.pairs.RuleDefinitions
 
+local validate = require('blink.cmp.config.utils').validate
 local mappings = {
   --- @type blink.pairs.MappingsConfig
   default = {
@@ -64,6 +65,34 @@ local mappings = {
   },
 }
 
-function mappings.validate(config) end
+function mappings.validate(config)
+  validate('mappings', {
+    enabled = { config.enabled, 'boolean' },
+    pairs = { config.pairs, 'table' },
+  }, config)
+
+  for key, defs in pairs(config.pairs) do
+    mappings.validate_rules(key, defs)
+  end
+end
+
+function mappings.validate_rules(key, defs)
+  if type(defs) == 'string' then return end
+
+  if not vim.islist(defs) then defs = { defs } end
+
+  for i, def in ipairs(defs) do
+    validate('mappings.pairs.[' .. key .. '].' .. i, {
+      [1] = { def[1], 'string' },
+      [2] = { def[2], { 'string', 'nil' } },
+      priority = { def.priority, { 'number', 'nil' } },
+      filetypes = { def.filetypes, { 'table', 'nil' } },
+      when = { def.when, { 'function', 'nil' } },
+      enter = { def.enter, { 'boolean', 'function', 'nil' } },
+      backspace = { def.backspace, { 'boolean', 'function', 'nil' } },
+      space = { def.space, { 'boolean', 'function', 'nil' } },
+    }, def)
+  end
+end
 
 return mappings

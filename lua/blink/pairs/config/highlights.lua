@@ -4,6 +4,7 @@
 --- @field priority number
 --- @field ns integer
 
+local validate = require('blink.cmp.config.utils').validate
 local highlights = {
   --- @type blink.pairs.HighlightsConfig
   default = {
@@ -18,6 +19,13 @@ local highlights = {
   },
 }
 
-function highlights.validate(config) end
+function highlights.validate(config)
+  validate('highlights', {
+    enabled = { config.enabled, 'boolean' },
+    groups = { config.groups, 'table' },
+    priority = { config.priority, 'number' },
+    ns = { config.ns, 'number' },
+  }, config)
+end
 
 return highlights

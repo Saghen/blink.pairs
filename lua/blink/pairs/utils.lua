@@ -77,4 +77,20 @@ function utils.with_lazyredraw(f)
   return result_or_err
 end
 
+--- Slices an array
+--- @generic T
+--- @param arr T[]
+--- @param start number?
+--- @param finish number?
+--- @return T[]
+function utils.slice(arr, start, finish)
+  start = start or 1
+  finish = finish or #arr
+  local sliced = {}
+  for i = start, finish do
+    sliced[#sliced + 1] = arr[i]
+  end
+  return sliced
+end
+
 return utils
