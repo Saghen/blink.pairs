@@ -45,6 +45,8 @@ function M.parse(definitions)
   local rules = {}
 
   for key, defs in pairs(definitions) do
+    if defs == false then goto continue end
+
     if type(defs) ~= 'table' or not vim.islist(defs) then defs = { defs } end
     --- @cast defs (blink.pairs.RuleDefinition | string)[]
 
@@ -64,6 +66,8 @@ function M.parse(definitions)
 
     -- Sort by priority
     table.sort(rules[key], function(a, b) return a.priority > b.priority end)
+
+    ::continue::
   end
 
   return rules
