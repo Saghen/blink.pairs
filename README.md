@@ -55,9 +55,9 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
     highlights = {
       enabled = true,
       groups = {
-        'RainbowOrange',
-        'RainbowPurple',
-        'RainbowBlue',
+        'BlinkPairsOrange',
+        'BlinkPairsPurple',
+        'BlinkPairsBlue',
       },
       priority = 200,
       ns = vim.api.nvim_create_namespace('blink.pairs'),

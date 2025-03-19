@@ -10,9 +10,9 @@ local highlights = {
   default = {
     enabled = true,
     groups = {
-      'RainbowOrange',
-      'RainbowPurple',
-      'RainbowBlue',
+      'BlinkPairsOrange',
+      'BlinkPairsPurple',
+      'BlinkPairsBlue',
     },
     priority = 200,
     ns = vim.api.nvim_create_namespace('blink.pairs'),

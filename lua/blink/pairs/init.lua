@@ -4,9 +4,9 @@
 local pairs = {}
 
 local function set_highlights()
-  vim.api.nvim_set_hl(0, 'RainbowOrange', { ctermfg = 15, fg = '#d65d0e', default = true })
-  vim.api.nvim_set_hl(0, 'RainbowPurple', { ctermfg = 13, fg = '#b16286', default = true })
-  vim.api.nvim_set_hl(0, 'RainbowBlue', { ctermfg = 12, fg = '#458588', default = true })
+  vim.api.nvim_set_hl(0, 'BlinkPairsOrange', { ctermfg = 15, fg = '#d65d0e', default = true })
+  vim.api.nvim_set_hl(0, 'BlinkPairsPurple', { ctermfg = 13, fg = '#b16286', default = true })
+  vim.api.nvim_set_hl(0, 'BlinkPairsBlue', { ctermfg = 12, fg = '#458588', default = true })
 end
 
 --- @param user_config blink.pairs.Config
