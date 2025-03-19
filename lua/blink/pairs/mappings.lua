@@ -10,7 +10,7 @@ function mappings.register(rule_definitions)
   local map = function(lhs, rhs) vim.keymap.set('i', lhs, rhs, { silent = true, noremap = true, expr = true }) end
 
   for key, rules in pairs(rules_by_key) do
-    map(key, mappings.on_key(key, rules))
+    if #rules > 0 then map(key, mappings.on_key(key, rules)) end
   end
 
   local all_rules = rule_lib.get_all(rules_by_key)
