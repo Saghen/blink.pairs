@@ -38,6 +38,7 @@ pub fn parse_filetype(filetype: String, text: String) -> Option<Vec<Vec<Match>>>
         "rust" => Some(parse_with_lexer(RustToken::lexer(&text))),
         "swift" => Some(parse_with_lexer(SwiftToken::lexer(&text))),
         "typescript" => Some(parse_with_lexer(TypeScriptToken::lexer(&text))),
+        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(&text))),
         _ => None,
     }
 }

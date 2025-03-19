@@ -1,4 +1,5 @@
 mod c;
+mod clojure;
 mod cpp;
 mod csharp;
 mod go;
@@ -14,6 +15,7 @@ mod swift;
 mod typescript;
 
 pub use c::CToken;
+pub use clojure::ClojureToken;
 pub use cpp::CppToken;
 pub use csharp::CSharpToken;
 pub use go::GoToken;
