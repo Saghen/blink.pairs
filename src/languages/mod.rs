@@ -88,19 +88,19 @@ macro_rules! define_token_enum {
             NewLine,
         }
 
-        impl Into<$crate::languages::Token> for $name {
-            fn into(self) -> $crate::languages::Token {
-                match self {
-                    Self::DelimiterOpen => $crate::languages::Token::DelimiterOpen,
-                    Self::DelimiterClose => $crate::languages::Token::DelimiterClose,
-                    Self::LineComment => $crate::languages::Token::LineComment,
-                    Self::BlockCommentOpen => $crate::languages::Token::BlockCommentOpen,
-                    Self::BlockCommentClose => $crate::languages::Token::BlockCommentClose,
-                    Self::String => $crate::languages::Token::String,
-                    Self::BlockStringOpen => $crate::languages::Token::BlockStringOpen,
-                    Self::BlockStringClose => $crate::languages::Token::BlockStringClose,
-                    Self::Escape => $crate::languages::Token::Escape,
-                    Self::NewLine => $crate::languages::Token::NewLine,
+        impl From<$name> for $crate::languages::Token {
+            fn from(value: $name) -> Self {
+                match value {
+                    $name::DelimiterOpen => Self::DelimiterOpen,
+                    $name::DelimiterClose => Self::DelimiterClose,
+                    $name::LineComment => Self::LineComment,
+                    $name::BlockCommentOpen => Self::BlockCommentOpen,
+                    $name::BlockCommentClose => Self::BlockCommentClose,
+                    $name::String => Self::String,
+                    $name::BlockStringOpen => Self::BlockStringOpen,
+                    $name::BlockStringClose => Self::BlockStringClose,
+                    $name::Escape => Self::Escape,
+                    $name::NewLine => Self::NewLine,
                 }
             }
         }
