@@ -46,9 +46,8 @@ fn parse_buffer(
         return match parse_filetype(filetype, text) {
             None => Ok(false),
             Some(matches_by_line) => {
-                let new_end_line = new_end_line
-                    .unwrap_or((start_line + existing_matches_by_line.len()) as i32)
-                    as usize;
+                let new_end_line =
+                    new_end_line.unwrap_or((start_line + matches_by_line.len()) as i32) as usize;
                 let length = new_end_line - start_line;
 
                 existing_matches_by_line.splice(old_range, matches_by_line[0..length].to_vec());
