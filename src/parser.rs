@@ -75,13 +75,13 @@ where
         escaped_position = None;
 
         use {ParseState::*, Token::*};
-        match (state, &token, should_escape) {
+        match (state, token, should_escape) {
             (Normal, DelimiterOpen(open), false) => {
                 let _match = Match {
                     text: open.to_string(),
                     row: line_number,
                     col: lexer.span().start - col_offset,
-                    closing: Some(match *open {
+                    closing: Some(match open {
                         "(" => ")".to_string(),
                         "[" => "]".to_string(),
                         "{" => "}".to_string(),
@@ -95,7 +95,7 @@ where
             }
             (Normal, DelimiterClose(close), false) => {
                 if let Some(closing) = stack.last() {
-                    if *close == closing {
+                    if close == closing {
                         stack.pop();
                     }
                 }
@@ -110,7 +110,7 @@ where
                 matches_by_line.last_mut().unwrap().push(_match);
             }
             (Normal, String(open), false) => state = InString(open),
-            (InString(open), String(close), false) if open == *close => state = Normal,
+            (InString(open), String(close), false) if open == close => state = Normal,
             (InString(_), NewLine, _) => state = Normal,
 
             (Normal, LineComment, false) => state = InLineComment,

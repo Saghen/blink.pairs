@@ -32,6 +32,7 @@ pub use swift::SwiftToken;
 pub use typescript::TypeScriptToken;
 pub use typst::TypstToken;
 
+#[derive(Debug, Clone, Copy)]
 pub enum Token<'s> {
     DelimiterOpen(&'s str),
     DelimiterClose(&'s str),
