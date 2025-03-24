@@ -1,16 +1,18 @@
+use buffer::ParsedBuffer;
 use mlua::prelude::*;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use parser::{parse_filetype, recalculate_stack_heights, Match};
+use parser::Match;
 
+pub mod buffer;
 pub mod languages;
 pub mod parser;
 
-static PARSED_BUFFERS: LazyLock<Mutex<HashMap<i32, Vec<Vec<Match>>>>> =
+static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<i32, Vec<Vec<Match>>>> {
+fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
     match PARSED_BUFFERS.lock() {
         Ok(lock) => lock,
         Err(_) => {
@@ -26,51 +28,35 @@ fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<i32, Vec<Vec<Match>>>> {
 fn parse_buffer(
     _lua: &Lua,
     (bufnr, filetype, text, start_line, old_end_line, new_end_line): (
-        i32,
+        usize,
         String,
         String,
-        Option<i32>,
-        Option<i32>,
-        Option<i32>,
+        Option<usize>,
+        Option<usize>,
+        Option<usize>,
     ),
 ) -> LuaResult<bool> {
     let mut parsed_buffers = get_parsed_buffers();
 
     // Incremental parse
-    if let Some(existing_matches_by_line) = parsed_buffers.get_mut(&bufnr) {
-        let max_line = existing_matches_by_line.len() as i32;
-        let start_line = start_line.unwrap_or(0).min(max_line) as usize;
-        let old_end_line = old_end_line.unwrap_or(max_line).min(max_line) as usize;
-        let old_range = start_line..old_end_line;
-
-        return match parse_filetype(filetype, text) {
-            None => Ok(false),
-            Some(matches_by_line) => {
-                let new_end_line =
-                    new_end_line.unwrap_or((start_line + matches_by_line.len()) as i32) as usize;
-                let length = new_end_line - start_line;
-
-                existing_matches_by_line.splice(old_range, matches_by_line[0..length].to_vec());
-                recalculate_stack_heights(existing_matches_by_line);
-                Ok(true)
-            }
-        };
+    if let Some(parsed_buffer) = parsed_buffers.get_mut(&bufnr) {
+        Ok(parsed_buffer.reparse_range(&filetype, &text, start_line, old_end_line, new_end_line))
     }
     // Full parse
-    else if let Some(matches_by_line) = parse_filetype(filetype, text) {
-        parsed_buffers.insert(bufnr, matches_by_line);
-        return Ok(true);
+    else if let Some(parsed_buffer) = ParsedBuffer::parse(&filetype, &text) {
+        parsed_buffers.insert(bufnr, parsed_buffer);
+        Ok(true)
+    } else {
+        Ok(false)
     }
-
-    Ok(false)
 }
 
-fn get_parsed_line(_lua: &Lua, (bufnr, line_number): (i32, i32)) -> LuaResult<Vec<Match>> {
+fn get_parsed_line(_lua: &Lua, (bufnr, line_number): (usize, usize)) -> LuaResult<Vec<Match>> {
     let parsed_buffers = get_parsed_buffers();
 
     if let Some(parsed_buffer) = parsed_buffers.get(&bufnr) {
-        if let Some(line_matches) = parsed_buffer.get(line_number as usize) {
-            return Ok(line_matches.clone());
+        if let Some(line_matches) = parsed_buffer.line_matches(line_number) {
+            return Ok(line_matches);
         }
     }
 

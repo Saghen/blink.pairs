@@ -6,11 +6,11 @@ use super::languages::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Match {
-    text: String,
-    row: usize,
-    col: usize,
-    closing: Option<String>,
-    stack_height: usize,
+    pub text: String,
+    pub row: usize,
+    pub col: usize,
+    pub closing: Option<String>,
+    pub stack_height: usize,
 }
 
 // TODO: how do we derive this?
@@ -20,52 +20,66 @@ impl IntoLua for Match {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum ParseState<'a> {
+#[derive(Debug, Clone)]
+pub enum ParseState {
     Normal,
     InLineComment,
     InBlockComment,
-    InString(&'a str),
-    InBlockStringSymmetric(&'a str),
+    InString(String),
+    InBlockStringSymmetric(String),
     InBlockString,
 }
 
-pub fn parse_filetype(filetype: String, text: String) -> Option<Vec<Vec<Match>>> {
-    match filetype.as_str() {
-        "c" => Some(parse_with_lexer(CToken::lexer(&text))),
-        "cpp" => Some(parse_with_lexer(CppToken::lexer(&text))),
-        "csharp" => Some(parse_with_lexer(CSharpToken::lexer(&text))),
-        "go" => Some(parse_with_lexer(GoToken::lexer(&text))),
-        "java" => Some(parse_with_lexer(JavaToken::lexer(&text))),
-        "javascript" => Some(parse_with_lexer(JavaScriptToken::lexer(&text))),
-        "json" => Some(parse_with_lexer(JsonToken::lexer(&text))),
-        "jsonc" => Some(parse_with_lexer(JsonToken::lexer(&text))),
-        "json5" => Some(parse_with_lexer(JsonToken::lexer(&text))),
-        "lua" => Some(parse_with_lexer(LuaToken::lexer(&text))),
-        "php" => Some(parse_with_lexer(PhpToken::lexer(&text))),
-        "python" => Some(parse_with_lexer(PythonToken::lexer(&text))),
-        "ruby" => Some(parse_with_lexer(RubyToken::lexer(&text))),
-        "rust" => Some(parse_with_lexer(RustToken::lexer(&text))),
-        "swift" => Some(parse_with_lexer(SwiftToken::lexer(&text))),
-        "typescript" => Some(parse_with_lexer(TypeScriptToken::lexer(&text))),
-        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(&text))),
-        "typst" => Some(parse_with_lexer(TypstToken::lexer(&text))),
+pub fn parse_filetype(
+    filetype: &str,
+    text: &str,
+    initial_state: ParseState,
+) -> Option<(Vec<Vec<Match>>, Vec<ParseState>)> {
+    match filetype {
+        "c" => Some(parse_with_lexer(CToken::lexer(text), initial_state)),
+        "cpp" => Some(parse_with_lexer(CppToken::lexer(text), initial_state)),
+        "csharp" => Some(parse_with_lexer(CSharpToken::lexer(text), initial_state)),
+        "go" => Some(parse_with_lexer(GoToken::lexer(text), initial_state)),
+        "java" => Some(parse_with_lexer(JavaToken::lexer(text), initial_state)),
+        "javascript" => Some(parse_with_lexer(
+            JavaScriptToken::lexer(text),
+            initial_state,
+        )),
+        "json" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
+        "jsonc" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
+        "json5" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
+        "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
+        "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
+        "python" => Some(parse_with_lexer(PythonToken::lexer(text), initial_state)),
+        "ruby" => Some(parse_with_lexer(RubyToken::lexer(text), initial_state)),
+        "rust" => Some(parse_with_lexer(RustToken::lexer(text), initial_state)),
+        "swift" => Some(parse_with_lexer(SwiftToken::lexer(text), initial_state)),
+        "typescript" => Some(parse_with_lexer(
+            TypeScriptToken::lexer(text),
+            initial_state,
+        )),
+        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(text), initial_state)),
+        "typst" => Some(parse_with_lexer(TypstToken::lexer(text), initial_state)),
         _ => None,
     }
 }
 
-fn parse_with_lexer<'s, T>(mut lexer: Lexer<'s, T>) -> Vec<Vec<Match>>
+fn parse_with_lexer<'s, T>(
+    mut lexer: Lexer<'s, T>,
+    initial_state: ParseState,
+) -> (Vec<Vec<Match>>, Vec<ParseState>)
 where
     T: Into<Token<'s>> + Logos<'s>,
 {
     let mut matches_by_line = vec![vec![]];
+    let mut state_by_line = vec![];
     let mut stack = vec![];
 
     let mut line_number = 0;
     let mut col_offset = 0;
     let mut escaped_position = None;
 
-    let mut state = ParseState::Normal;
+    let mut state = initial_state;
     while let Some(token) = lexer.next() {
         let token = match token {
             Ok(token) => token.into(),
@@ -76,7 +90,7 @@ where
         escaped_position = None;
 
         use {ParseState::*, Token::*};
-        match (state, token, should_escape) {
+        match (&state, token, should_escape) {
             (Normal, DelimiterOpen(open), false) => {
                 let closing = match open {
                     "(" => ")",
@@ -119,11 +133,13 @@ where
             (Normal, BlockCommentOpen, _) => state = InBlockComment,
             (InBlockComment, BlockCommentClose, _) => state = Normal,
 
-            (Normal, String(open), false) => state = InString(open),
+            (Normal, String(open), false) => state = InString(open.to_string()),
             (InString(open), String(close), false) if open == close => state = Normal,
             (InString(_), NewLine, false) => state = Normal,
 
-            (Normal, BlockStringSymmetric(open), _) => state = InBlockStringSymmetric(open),
+            (Normal, BlockStringSymmetric(open), _) => {
+                state = InBlockStringSymmetric(open.to_string())
+            }
             (InBlockStringSymmetric(open), BlockStringSymmetric(close), _) if open == close => {
                 state = Normal
             }
@@ -139,33 +155,10 @@ where
             line_number += 1;
             col_offset = lexer.span().end;
             matches_by_line.push(vec![]);
+            state_by_line.push(state.clone());
         }
     }
 
-    matches_by_line
-}
-
-pub fn recalculate_stack_heights(matches_by_line: &mut Vec<Vec<Match>>) {
-    let mut stack = vec![];
-
-    for matches in matches_by_line {
-        for match_ in matches {
-            match &match_.closing {
-                // Opening delimiter
-                Some(closing) => {
-                    match_.stack_height = stack.len();
-                    stack.push(closing);
-                }
-                // Closing delimiter
-                None => {
-                    if let Some(closing) = stack.last() {
-                        if *closing == &match_.text {
-                            stack.pop();
-                        }
-                    }
-                    match_.stack_height = stack.len();
-                }
-            }
-        }
-    }
+    state_by_line.push(state.clone());
+    (matches_by_line, state_by_line)
 }
