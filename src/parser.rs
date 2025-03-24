@@ -20,6 +20,15 @@ impl IntoLua for Match {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum ParseState<'a> {
+    Normal,
+    InLineComment,
+    InBlockComment,
+    InString(&'a str),
+    InBlockString,
+}
+
 pub fn parse_filetype(filetype: String, text: String) -> Option<Vec<Vec<Match>>> {
     match filetype.as_str() {
         "c" => Some(parse_with_lexer(CToken::lexer(&text))),
@@ -47,7 +56,7 @@ pub fn parse_filetype(filetype: String, text: String) -> Option<Vec<Vec<Match>>>
 fn parse_with_lexer<'a, T>(mut lexer: Lexer<'a, T>) -> Vec<Vec<Match>>
 where
     T: Into<Token> + Logos<'a>,
-    <T::Source as Source>::Slice<'a>: std::fmt::Display + AsRef<str>,
+    T::Source: Source<Slice<'a> = &'a str>,
 {
     let mut matches_by_line = vec![vec![]];
     let mut stack = vec![];
@@ -56,30 +65,24 @@ where
     let mut col_offset = 0;
     let mut escaped_position = None;
 
+    let mut state = ParseState::Normal;
     while let Some(token) = lexer.next() {
         let token = match token {
             Ok(token) => token.into(),
             Err(_) => continue,
         };
 
-        // Handle escaped characters
-        if let Some((escaped_line, escaped_col)) = escaped_position {
-            if !matches!(token, Token::NewLine) {
-                escaped_position = None;
-                let current_col = lexer.span().start;
-                if line_number == escaped_line && current_col - 1 == escaped_col {
-                    continue;
-                }
-            }
-        }
+        let should_escape = matches!(escaped_position, Some(pos) if (pos == lexer.span().start));
+        escaped_position = None;
 
-        match token {
-            Token::DelimiterOpen => {
+        use {ParseState::*, Token::*};
+        match (state, &token, should_escape) {
+            (Normal, DelimiterOpen, false) => {
                 let _match = Match {
                     text: lexer.slice().to_string(),
                     row: line_number,
                     col: lexer.span().start - col_offset,
-                    closing: Some(match lexer.slice().as_ref() {
+                    closing: Some(match lexer.slice() {
                         "(" => ")".to_string(),
                         "[" => "]".to_string(),
                         "{" => "}".to_string(),
@@ -91,10 +94,9 @@ where
                 stack.push(_match.closing.clone().unwrap().clone());
                 matches_by_line.last_mut().unwrap().push(_match);
             }
-
-            Token::DelimiterClose => {
+            (Normal, DelimiterClose, false) => {
                 if let Some(closing) = stack.last() {
-                    if lexer.slice().as_ref() == closing {
+                    if lexer.slice() == closing {
                         stack.pop();
                     }
                 }
@@ -108,71 +110,27 @@ where
                 };
                 matches_by_line.last_mut().unwrap().push(_match);
             }
+            (Normal, String, false) => state = InString(lexer.slice()),
+            (InString(open), String, false) if open == lexer.slice() => state = Normal,
+            (InString(_), NewLine, _) => state = Normal,
 
-            Token::LineComment => {
-                while let Some(token) = lexer.next() {
-                    if let Ok(token) = token {
-                        if matches!(token.into(), Token::NewLine) {
-                            line_number += 1;
-                            col_offset = lexer.span().start + 1;
-                            matches_by_line.push(vec![]);
-                            break;
-                        }
-                    }
-                }
-            }
+            (Normal, LineComment, false) => state = InLineComment,
+            (InLineComment, NewLine, _) => state = Normal,
 
-            Token::BlockCommentOpen => {
-                while let Some(token) = lexer.next() {
-                    if let Ok(token) = token {
-                        match token.into() {
-                            Token::BlockCommentClose => break,
-                            Token::NewLine => {
-                                line_number += 1;
-                                col_offset = lexer.span().start + 1;
-                                matches_by_line.push(vec![]);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
+            (Normal, BlockCommentOpen, _) => state = InBlockComment,
+            (InBlockComment, BlockCommentClose, _) => state = Normal,
 
-            Token::String => {
-                let end_char = lexer.slice();
-                while let Some(token) = lexer.next() {
-                    if let Ok(token) = token {
-                        match token.into() {
-                            Token::NewLine => {
-                                line_number += 1;
-                                col_offset = lexer.span().start + 1;
-                                matches_by_line.push(vec![]);
-                                break;
-                            }
-                            Token::String => {
-                                if lexer.slice() == end_char {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
+            (Normal, BlockStringOpen, _) => state = InBlockString,
+            (InBlockComment, BlockStringClose, _) => state = Normal,
 
-            // TODO: should also be in hot loops
-            Token::Escape => {
-                let col = lexer.span().start;
-                escaped_position = Some((line_number, col));
-            }
-
-            Token::NewLine => {
-                line_number += 1;
-                col_offset = lexer.span().start + 1;
-                matches_by_line.push(vec![]);
-            }
-
+            (_, Escape, false) => escaped_position = Some(lexer.span().end),
             _ => {}
+        }
+
+        if matches!(token, NewLine) {
+            line_number += 1;
+            col_offset = lexer.span().end;
+            matches_by_line.push(vec![]);
         }
     }
 
