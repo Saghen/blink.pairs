@@ -26,6 +26,7 @@ enum ParseState<'a> {
     InLineComment,
     InBlockComment,
     InString(&'a str),
+    InBlockStringSymmetric(&'a str),
     InBlockString,
 }
 
@@ -109,15 +110,21 @@ where
                 };
                 matches_by_line.last_mut().unwrap().push(_match);
             }
-            (Normal, String(open), false) => state = InString(open),
-            (InString(open), String(close), false) if open == close => state = Normal,
-            (InString(_), NewLine, _) => state = Normal,
 
             (Normal, LineComment, false) => state = InLineComment,
             (InLineComment, NewLine, _) => state = Normal,
 
             (Normal, BlockCommentOpen, _) => state = InBlockComment,
             (InBlockComment, BlockCommentClose, _) => state = Normal,
+
+            (Normal, String(open), false) => state = InString(open),
+            (InString(open), String(close), false) if open == close => state = Normal,
+            (InString(_), NewLine, _) => state = Normal,
+
+            (Normal, BlockStringSymmetric(open), _) => state = InBlockStringSymmetric(open),
+            (InBlockStringSymmetric(open), BlockStringSymmetric(close), _) if open == close => {
+                state = Normal
+            }
 
             (Normal, BlockStringOpen, _) => state = InBlockString,
             (InBlockComment, BlockStringClose, _) => state = Normal,

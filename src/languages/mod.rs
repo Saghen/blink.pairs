@@ -40,6 +40,7 @@ pub enum Token<'s> {
     BlockCommentOpen,
     BlockCommentClose,
     String(&'s str),
+    BlockStringSymmetric(&'s str),
     BlockStringOpen,
     BlockStringClose,
     Escape,
@@ -53,7 +54,10 @@ macro_rules! define_token_enum {
         line_comment: [ $($line_comment:literal),* $(,)? ],
         block_comment: [ $($block_comment_open:literal => $block_comment_close:literal),* $(,)? ],
         string: [ $($string_delim:literal),* $(,)? ],
-        block_string: [ $($block_string_open:literal => $block_string_close:literal),* $(,)? ]
+        block_string: [
+            $(symmetric $block_string_symmetric:literal),*
+            $($block_string_open:literal => $block_string_close:literal),* $(,)?
+        ]
     }) => {
         #[allow(unused)] // Ignore warnings about unused variants
         #[derive(logos::Logos)]
@@ -76,6 +80,9 @@ macro_rules! define_token_enum {
             $(#[token($string_delim)])*
             String(&'s str),
 
+            $(#[token($block_string_symmetric)])*
+            BlockStringSymmetric(&'s str),
+
             $(#[token($block_string_open)])*
             BlockStringOpen,
 
@@ -95,6 +102,7 @@ macro_rules! define_token_enum {
                     $name::DelimiterOpen(s) => Self::DelimiterOpen(s),
                     $name::DelimiterClose(s) => Self::DelimiterClose(s),
                     $name::LineComment => Self::LineComment,
+                    $name::BlockStringSymmetric(s) => Self::BlockStringSymmetric(s),
                     $name::BlockCommentOpen => Self::BlockCommentOpen,
                     $name::BlockCommentClose => Self::BlockCommentClose,
                     $name::String(s) => Self::String(s),
