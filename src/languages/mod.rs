@@ -32,13 +32,13 @@ pub use swift::SwiftToken;
 pub use typescript::TypeScriptToken;
 pub use typst::TypstToken;
 
-pub enum Token {
-    DelimiterOpen,
-    DelimiterClose,
+pub enum Token<'s> {
+    DelimiterOpen(&'s str),
+    DelimiterClose(&'s str),
     LineComment,
     BlockCommentOpen,
     BlockCommentClose,
-    String,
+    String(&'s str),
     BlockStringOpen,
     BlockStringClose,
     Escape,
@@ -57,12 +57,12 @@ macro_rules! define_token_enum {
         #[allow(unused)] // Ignore warnings about unused variants
         #[derive(logos::Logos)]
         #[logos(skip r"[ \t\f]+")] // Skip whitespace
-        pub enum $name {
+        pub enum $name<'s> {
             $(#[token($open)])*
-            DelimiterOpen,
+            DelimiterOpen(&'s str),
 
             $(#[token($close)])*
-            DelimiterClose,
+            DelimiterClose(&'s str),
 
             $(#[token($line_comment)])*
             LineComment,
@@ -73,7 +73,7 @@ macro_rules! define_token_enum {
             BlockCommentClose,
 
             $(#[token($string_delim)])*
-            String,
+            String(&'s str),
 
             $(#[token($block_string_open)])*
             BlockStringOpen,
@@ -88,15 +88,15 @@ macro_rules! define_token_enum {
             NewLine,
         }
 
-        impl From<$name> for $crate::languages::Token {
-            fn from(value: $name) -> Self {
+        impl<'s> From<$name<'s>> for $crate::languages::Token<'s> {
+            fn from(value: $name<'s>) -> Self {
                 match value {
-                    $name::DelimiterOpen => Self::DelimiterOpen,
-                    $name::DelimiterClose => Self::DelimiterClose,
+                    $name::DelimiterOpen(s) => Self::DelimiterOpen(s),
+                    $name::DelimiterClose(s) => Self::DelimiterClose(s),
                     $name::LineComment => Self::LineComment,
                     $name::BlockCommentOpen => Self::BlockCommentOpen,
                     $name::BlockCommentClose => Self::BlockCommentClose,
-                    $name::String => Self::String,
+                    $name::String(s) => Self::String(s),
                     $name::BlockStringOpen => Self::BlockStringOpen,
                     $name::BlockStringClose => Self::BlockStringClose,
                     $name::Escape => Self::Escape,

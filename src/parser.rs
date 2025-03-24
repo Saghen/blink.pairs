@@ -1,4 +1,4 @@
-use logos::{Lexer, Logos, Source};
+use logos::{Lexer, Logos};
 use mlua::{serde::Serializer, IntoLua};
 use serde::Serialize;
 
@@ -53,10 +53,9 @@ pub fn parse_filetype(filetype: String, text: String) -> Option<Vec<Vec<Match>>>
     }
 }
 
-fn parse_with_lexer<'a, T>(mut lexer: Lexer<'a, T>) -> Vec<Vec<Match>>
+fn parse_with_lexer<'s, T>(mut lexer: Lexer<'s, T>) -> Vec<Vec<Match>>
 where
-    T: Into<Token> + Logos<'a>,
-    T::Source: Source<Slice<'a> = &'a str>,
+    T: Into<Token<'s>> + Logos<'s>,
 {
     let mut matches_by_line = vec![vec![]];
     let mut stack = vec![];
@@ -77,12 +76,12 @@ where
 
         use {ParseState::*, Token::*};
         match (state, &token, should_escape) {
-            (Normal, DelimiterOpen, false) => {
+            (Normal, DelimiterOpen(open), false) => {
                 let _match = Match {
-                    text: lexer.slice().to_string(),
+                    text: open.to_string(),
                     row: line_number,
                     col: lexer.span().start - col_offset,
-                    closing: Some(match lexer.slice() {
+                    closing: Some(match *open {
                         "(" => ")".to_string(),
                         "[" => "]".to_string(),
                         "{" => "}".to_string(),
@@ -94,15 +93,15 @@ where
                 stack.push(_match.closing.clone().unwrap().clone());
                 matches_by_line.last_mut().unwrap().push(_match);
             }
-            (Normal, DelimiterClose, false) => {
+            (Normal, DelimiterClose(close), false) => {
                 if let Some(closing) = stack.last() {
-                    if lexer.slice() == closing {
+                    if *close == closing {
                         stack.pop();
                     }
                 }
 
                 let _match = Match {
-                    text: lexer.slice().to_string(),
+                    text: close.to_string(),
                     row: line_number,
                     col: lexer.span().start - col_offset,
                     closing: None,
@@ -110,8 +109,8 @@ where
                 };
                 matches_by_line.last_mut().unwrap().push(_match);
             }
-            (Normal, String, false) => state = InString(lexer.slice()),
-            (InString(open), String, false) if open == lexer.slice() => state = Normal,
+            (Normal, String(open), false) => state = InString(open),
+            (InString(open), String(close), false) if open == *close => state = Normal,
             (InString(_), NewLine, _) => state = Normal,
 
             (Normal, LineComment, false) => state = InLineComment,
