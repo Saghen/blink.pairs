@@ -36,6 +36,7 @@ pub fn parse_filetype(
 ) -> Option<(Vec<Vec<Match>>, Vec<ParseState>)> {
     match filetype {
         "c" => Some(parse_with_lexer(CToken::lexer(text), initial_state)),
+        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(text), initial_state)),
         "cpp" => Some(parse_with_lexer(CppToken::lexer(text), initial_state)),
         "csharp" => Some(parse_with_lexer(CSharpToken::lexer(text), initial_state)),
         "dart" => Some(parse_with_lexer(DartToken::lexer(text), initial_state)),
@@ -48,8 +49,8 @@ pub fn parse_filetype(
             initial_state,
         )),
         "json" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
-        "jsonc" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
         "json5" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
+        "jsonc" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
         "kotlin" => Some(parse_with_lexer(KotlinToken::lexer(text), initial_state)),
         "lean" => Some(parse_with_lexer(LeanToken::lexer(text), initial_state)),
         "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
@@ -65,7 +66,6 @@ pub fn parse_filetype(
             TypeScriptToken::lexer(text),
             initial_state,
         )),
-        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(text), initial_state)),
         "typst" => Some(parse_with_lexer(TypstToken::lexer(text), initial_state)),
         "zig" => Some(parse_with_lexer(ZigToken::lexer(text), initial_state)),
         _ => None,
