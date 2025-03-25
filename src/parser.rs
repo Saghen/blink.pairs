@@ -49,6 +49,7 @@ pub fn parse_filetype(
         "json" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
         "jsonc" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
         "json5" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
+        "kotlin" => Some(parse_with_lexer(KotlinToken::lexer(text), initial_state)),
         "lean" => Some(parse_with_lexer(LeanToken::lexer(text), initial_state)),
         "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
         "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
