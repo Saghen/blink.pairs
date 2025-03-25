@@ -15,6 +15,7 @@ mod json;
 mod kotlin;
 mod lean;
 mod lua;
+mod objc;
 mod php;
 mod python;
 mod r;

@@ -57,6 +57,7 @@ pub fn parse_filetype(
         "kotlin" => Some(parse_with_lexer(KotlinToken::lexer(text), initial_state)),
         "lean" => Some(parse_with_lexer(LeanToken::lexer(text), initial_state)),
         "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
+        "objc" => Some(parse_with_lexer(ObjCToken::lexer(text), initial_state)),
         "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
         "python" => Some(parse_with_lexer(PythonToken::lexer(text), initial_state)),
         "r" => Some(parse_with_lexer(RToken::lexer(text), initial_state)),
