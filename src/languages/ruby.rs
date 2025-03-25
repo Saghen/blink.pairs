@@ -7,7 +7,7 @@ define_token_enum!(RubyToken, {
         "{" => "}"
     },
     line_comment: ["#"],
-    block_comment: [],
+    block_comment: ["=begin" => "end"],
     string: ["\"", "'"],
     block_string: ["%Q{" => "}"]
 });
