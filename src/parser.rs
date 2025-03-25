@@ -55,6 +55,7 @@ pub fn parse_filetype(
         "ruby" => Some(parse_with_lexer(RubyToken::lexer(text), initial_state)),
         "rust" => Some(parse_with_lexer(RustToken::lexer(text), initial_state)),
         "swift" => Some(parse_with_lexer(SwiftToken::lexer(text), initial_state)),
+        "toml" => Some(parse_with_lexer(TomlToken::lexer(text), initial_state)),
         "typescript" => Some(parse_with_lexer(
             TypeScriptToken::lexer(text),
             initial_state,
