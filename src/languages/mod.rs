@@ -4,6 +4,7 @@ mod cpp;
 mod csharp;
 mod dart;
 mod elixir;
+mod erlang;
 mod fsharp;
 mod go;
 mod haskell;
