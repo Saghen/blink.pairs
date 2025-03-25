@@ -54,6 +54,7 @@ pub fn parse_filetype(
         "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
         "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
         "python" => Some(parse_with_lexer(PythonToken::lexer(text), initial_state)),
+        "r" => Some(parse_with_lexer(RToken::lexer(text), initial_state)),
         "ruby" => Some(parse_with_lexer(RubyToken::lexer(text), initial_state)),
         "rust" => Some(parse_with_lexer(RustToken::lexer(text), initial_state)),
         "swift" => Some(parse_with_lexer(SwiftToken::lexer(text), initial_state)),
