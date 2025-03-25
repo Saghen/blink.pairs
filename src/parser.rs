@@ -59,6 +59,7 @@ pub fn parse_filetype(
         "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
         "objc" => Some(parse_with_lexer(ObjCToken::lexer(text), initial_state)),
         "ocaml" => Some(parse_with_lexer(OCamlToken::lexer(text), initial_state)),
+        "perl" => Some(parse_with_lexer(PerlToken::lexer(text), initial_state)),
         "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
         "python" => Some(parse_with_lexer(PythonToken::lexer(text), initial_state)),
         "r" => Some(parse_with_lexer(RToken::lexer(text), initial_state)),

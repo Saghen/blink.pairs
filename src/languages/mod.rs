@@ -17,6 +17,7 @@ mod lean;
 mod lua;
 mod objc;
 mod ocaml;
+mod perl;
 mod php;
 mod python;
 mod r;
