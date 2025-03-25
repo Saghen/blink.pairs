@@ -34,52 +34,40 @@ pub fn parse_filetype(
     lines: &[&str],
     initial_state: ParseState,
 ) -> Option<(Vec<Vec<Match>>, Vec<ParseState>)> {
-    match filetype {
-        "c" => Some(parse_with_lexer(CToken::lexer, lines, initial_state)),
-        "clojure" => Some(parse_with_lexer(ClojureToken::lexer, lines, initial_state)),
-        "cpp" => Some(parse_with_lexer(CppToken::lexer, lines, initial_state)),
-        "csharp" => Some(parse_with_lexer(CSharpToken::lexer, lines, initial_state)),
-        "dart" => Some(parse_with_lexer(DartToken::lexer, lines, initial_state)),
-        "elixir" => Some(parse_with_lexer(ElixirToken::lexer, lines, initial_state)),
-        "erlang" => Some(parse_with_lexer(ErlangToken::lexer, lines, initial_state)),
-        "fsharp" => Some(parse_with_lexer(FSharpToken::lexer, lines, initial_state)),
-        "go" => Some(parse_with_lexer(GoToken::lexer, lines, initial_state)),
-        "haskell" => Some(parse_with_lexer(HaskellToken::lexer, lines, initial_state)),
-        "java" => Some(parse_with_lexer(JavaToken::lexer, lines, initial_state)),
-        "javascript" => Some(parse_with_lexer(
-            JavaScriptToken::lexer,
-            lines,
-            initial_state,
-        )),
-        "json" | "json5" | "jsonc" => {
-            Some(parse_with_lexer(JsonToken::lexer, lines, initial_state))
-        }
-        "kotlin" => Some(parse_with_lexer(KotlinToken::lexer, lines, initial_state)),
-        "lean" => Some(parse_with_lexer(LeanToken::lexer, lines, initial_state)),
-        "lua" => Some(parse_with_lexer(LuaToken::lexer, lines, initial_state)),
-        "objc" => Some(parse_with_lexer(ObjCToken::lexer, lines, initial_state)),
-        "ocaml" => Some(parse_with_lexer(OCamlToken::lexer, lines, initial_state)),
-        "perl" => Some(parse_with_lexer(PerlToken::lexer, lines, initial_state)),
-        "php" => Some(parse_with_lexer(PhpToken::lexer, lines, initial_state)),
-        "python" => Some(parse_with_lexer(PythonToken::lexer, lines, initial_state)),
-        "r" => Some(parse_with_lexer(RToken::lexer, lines, initial_state)),
-        "ruby" => Some(parse_with_lexer(RubyToken::lexer, lines, initial_state)),
-        "rust" => Some(parse_with_lexer(RustToken::lexer, lines, initial_state)),
-        "scala" => Some(parse_with_lexer(ScalaToken::lexer, lines, initial_state)),
-        "sh" | "bash" | "zsh" | "fish" => {
-            Some(parse_with_lexer(ShellToken::lexer, lines, initial_state))
-        }
-        "swift" => Some(parse_with_lexer(SwiftToken::lexer, lines, initial_state)),
-        "toml" => Some(parse_with_lexer(TomlToken::lexer, &lines, initial_state)),
-        "typescript" => Some(parse_with_lexer(
-            TypeScriptToken::lexer,
-            lines,
-            initial_state,
-        )),
-        "typst" => Some(parse_with_lexer(TypstToken::lexer, lines, initial_state)),
-        "zig" => Some(parse_with_lexer(ZigToken::lexer, lines, initial_state)),
-        _ => None,
-    }
+    Some(match filetype {
+        "c" => parse_with_lexer(CToken::lexer, lines, initial_state),
+        "clojure" => parse_with_lexer(ClojureToken::lexer, lines, initial_state),
+        "cpp" => parse_with_lexer(CppToken::lexer, lines, initial_state),
+        "csharp" => parse_with_lexer(CSharpToken::lexer, lines, initial_state),
+        "dart" => parse_with_lexer(DartToken::lexer, lines, initial_state),
+        "elixir" => parse_with_lexer(ElixirToken::lexer, lines, initial_state),
+        "erlang" => parse_with_lexer(ErlangToken::lexer, lines, initial_state),
+        "fsharp" => parse_with_lexer(FSharpToken::lexer, lines, initial_state),
+        "go" => parse_with_lexer(GoToken::lexer, lines, initial_state),
+        "haskell" => parse_with_lexer(HaskellToken::lexer, lines, initial_state),
+        "java" => parse_with_lexer(JavaToken::lexer, lines, initial_state),
+        "javascript" => parse_with_lexer(JavaScriptToken::lexer, lines, initial_state),
+        "json" | "json5" | "jsonc" => parse_with_lexer(JsonToken::lexer, lines, initial_state),
+        "kotlin" => parse_with_lexer(KotlinToken::lexer, lines, initial_state),
+        "lean" => parse_with_lexer(LeanToken::lexer, lines, initial_state),
+        "lua" => parse_with_lexer(LuaToken::lexer, lines, initial_state),
+        "objc" => parse_with_lexer(ObjCToken::lexer, lines, initial_state),
+        "ocaml" => parse_with_lexer(OCamlToken::lexer, lines, initial_state),
+        "perl" => parse_with_lexer(PerlToken::lexer, lines, initial_state),
+        "php" => parse_with_lexer(PhpToken::lexer, lines, initial_state),
+        "python" => parse_with_lexer(PythonToken::lexer, lines, initial_state),
+        "r" => parse_with_lexer(RToken::lexer, lines, initial_state),
+        "ruby" => parse_with_lexer(RubyToken::lexer, lines, initial_state),
+        "rust" => parse_with_lexer(RustToken::lexer, lines, initial_state),
+        "scala" => parse_with_lexer(ScalaToken::lexer, lines, initial_state),
+        "sh" | "bash" | "zsh" | "fish" => parse_with_lexer(ShellToken::lexer, lines, initial_state),
+        "swift" => parse_with_lexer(SwiftToken::lexer, lines, initial_state),
+        "toml" => parse_with_lexer(TomlToken::lexer, lines, initial_state),
+        "typescript" => parse_with_lexer(TypeScriptToken::lexer, lines, initial_state),
+        "typst" => parse_with_lexer(TypstToken::lexer, lines, initial_state),
+        "zig" => parse_with_lexer(ZigToken::lexer, lines, initial_state),
+        _ => return None,
+    })
 }
 
 fn parse_with_lexer<'s, T>(
