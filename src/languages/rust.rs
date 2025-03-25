@@ -9,5 +9,5 @@ define_token_enum!(RustToken, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string: ["\""],
-    block_string: ["r#\"" => "\"#"]
+    block_string: ["r#\"" => "\"#", "r##\"" => "##\"", "r###\"" => "###\""]
 });
