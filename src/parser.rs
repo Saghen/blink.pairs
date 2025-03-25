@@ -59,6 +59,7 @@ pub fn parse_filetype(
         )),
         "clojure" => Some(parse_with_lexer(ClojureToken::lexer(text), initial_state)),
         "typst" => Some(parse_with_lexer(TypstToken::lexer(text), initial_state)),
+        "zig" => Some(parse_with_lexer(ZigToken::lexer(text), initial_state)),
         _ => None,
     }
 }

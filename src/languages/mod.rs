@@ -14,6 +14,7 @@ mod rust;
 mod swift;
 mod typescript;
 mod typst;
+mod zig;
 
 pub use c::CToken;
 pub use clojure::ClojureToken;
@@ -31,6 +32,7 @@ pub use rust::RustToken;
 pub use swift::SwiftToken;
 pub use typescript::TypeScriptToken;
 pub use typst::TypstToken;
+pub use zig::ZigToken;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Token<'s> {
