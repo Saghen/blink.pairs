@@ -9,5 +9,5 @@ define_token_enum!(DartToken, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string: ["\"", "'"],
-    block_string: ["\"\"\"" => "\"\"\"", "'''" => "'''"]
+    block_string: [symmetric "\"\"\"", symmetric "'''"]
 });
