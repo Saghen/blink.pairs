@@ -8,6 +8,6 @@ define_token_enum!(CSharpToken, {
     },
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
-    string: ["\"", "@"],
-    block_string: []
+    string: ["\""],
+    block_string: ["@\"" => "\""]
 });
