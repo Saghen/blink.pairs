@@ -7,7 +7,6 @@ use super::languages::*;
 #[derive(Debug, Clone, Serialize)]
 pub struct Match {
     pub text: String,
-    pub row: usize,
     pub col: usize,
     pub closing: Option<String>,
     pub stack_height: usize,
@@ -76,7 +75,6 @@ where
     let mut stack = vec![];
 
     let mut current_line_matches = vec![];
-    let mut line_number = 0;
     let mut col_offset = 0;
     let mut escaped_position = None;
 
@@ -103,7 +101,6 @@ where
                 .to_string();
                 let _match = Match {
                     text: open.to_string(),
-                    row: line_number,
                     col: lexer.span().start - col_offset,
                     closing: Some(closing.clone()),
                     stack_height: stack.len(),
@@ -120,7 +117,6 @@ where
 
                 let _match = Match {
                     text: close.to_string(),
-                    row: line_number,
                     col: lexer.span().start - col_offset,
                     closing: None,
                     stack_height: stack.len(),
@@ -153,7 +149,6 @@ where
         }
 
         if matches!(token, NewLine) {
-            line_number += 1;
             col_offset = lexer.span().end;
             matches_by_line.push(std::mem::take(&mut current_line_matches));
             state_by_line.push(state.clone());
