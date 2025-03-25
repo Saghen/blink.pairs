@@ -108,7 +108,7 @@ where
                     closing: Some(closing.clone()),
                     stack_height: stack.len(),
                 };
-                stack.push(closing.clone());
+                stack.push(closing);
                 current_line_matches.push(_match);
             }
             (Normal, DelimiterClose(close), false) => {
