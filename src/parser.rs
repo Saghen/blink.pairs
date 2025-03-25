@@ -97,12 +97,11 @@ where
                     "{" => "}",
                     "<" => ">",
                     char => char,
-                }
-                .to_string();
+                };
                 let _match = Match {
                     text: open.to_string(),
                     col: lexer.span().start - col_offset,
-                    closing: Some(closing.clone()),
+                    closing: Some(closing.to_string()),
                     stack_height: stack.len(),
                 };
                 stack.push(closing);
@@ -110,7 +109,7 @@ where
             }
             (Normal, DelimiterClose(close), false) => {
                 if let Some(closing) = stack.last() {
-                    if close == closing {
+                    if close == *closing {
                         stack.pop();
                     }
                 }
