@@ -16,6 +16,7 @@ mod kotlin;
 mod lean;
 mod lua;
 mod objc;
+mod ocaml;
 mod php;
 mod python;
 mod r;
