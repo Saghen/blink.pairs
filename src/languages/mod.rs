@@ -76,7 +76,6 @@ pub enum Token<'s> {
     BlockStringOpen,
     BlockStringClose,
     Escape,
-    NewLine,
 }
 
 #[macro_export]
@@ -123,9 +122,6 @@ macro_rules! define_token_enum {
 
             #[token("\\")]
             Escape,
-
-            #[token("\n")]
-            NewLine,
         }
 
         impl<'s> From<$name<'s>> for $crate::languages::Token<'s> {
@@ -141,7 +137,6 @@ macro_rules! define_token_enum {
                     $name::BlockStringOpen => Self::BlockStringOpen,
                     $name::BlockStringClose => Self::BlockStringClose,
                     $name::Escape => Self::Escape,
-                    $name::NewLine => Self::NewLine,
                 }
             }
         }

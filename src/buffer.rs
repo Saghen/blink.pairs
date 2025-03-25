@@ -6,8 +6,8 @@ pub struct ParsedBuffer {
 }
 
 impl ParsedBuffer {
-    pub fn parse(filetype: &str, text: &str) -> Option<Self> {
-        let (matches_by_line, state_by_line) = parse_filetype(filetype, text, ParseState::Normal)?;
+    pub fn parse(filetype: &str, lines: &[&str]) -> Option<Self> {
+        let (matches_by_line, state_by_line) = parse_filetype(filetype, lines, ParseState::Normal)?;
 
         Some(Self {
             matches_by_line,
@@ -18,7 +18,7 @@ impl ParsedBuffer {
     pub fn reparse_range(
         &mut self,
         filetype: &str,
-        text: &str,
+        lines: &[&str],
         start_line: Option<usize>,
         old_end_line: Option<usize>,
         new_end_line: Option<usize>,
@@ -37,7 +37,7 @@ impl ParsedBuffer {
         };
 
         if let Some((matches_by_line, state_by_line)) =
-            parse_filetype(filetype, text, initial_state)
+            parse_filetype(filetype, lines, initial_state)
         {
             let new_end_line = new_end_line.unwrap_or(start_line + matches_by_line.len());
             let length = new_end_line - start_line;

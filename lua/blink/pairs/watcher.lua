@@ -14,10 +14,9 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   local start_time = vim.uv.hrtime()
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line or 0, new_end_line or -1, false)
-  local text = table.concat(lines, '\n')
 
   local rust = require('blink.pairs.rust')
-  local did_parse = rust.parse_buffer(bufnr, vim.bo[bufnr].filetype, text, start_line, old_end_line, new_end_line)
+  local did_parse = rust.parse_buffer(bufnr, vim.bo[bufnr].filetype, lines, start_line, old_end_line, new_end_line)
 
   if did_parse and require('blink.pairs.config').debug then
     vim.print('parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms')

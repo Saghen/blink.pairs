@@ -31,56 +31,60 @@ pub enum ParseState {
 
 pub fn parse_filetype(
     filetype: &str,
-    text: &str,
+    lines: &[&str],
     initial_state: ParseState,
 ) -> Option<(Vec<Vec<Match>>, Vec<ParseState>)> {
     match filetype {
-        "c" => Some(parse_with_lexer(CToken::lexer(text), initial_state)),
-        "clojure" => Some(parse_with_lexer(ClojureToken::lexer(text), initial_state)),
-        "cpp" => Some(parse_with_lexer(CppToken::lexer(text), initial_state)),
-        "csharp" => Some(parse_with_lexer(CSharpToken::lexer(text), initial_state)),
-        "dart" => Some(parse_with_lexer(DartToken::lexer(text), initial_state)),
-        "elixir" => Some(parse_with_lexer(ElixirToken::lexer(text), initial_state)),
-        "erlang" => Some(parse_with_lexer(ErlangToken::lexer(text), initial_state)),
-        "fsharp" => Some(parse_with_lexer(FSharpToken::lexer(text), initial_state)),
-        "go" => Some(parse_with_lexer(GoToken::lexer(text), initial_state)),
-        "haskell" => Some(parse_with_lexer(HaskellToken::lexer(text), initial_state)),
-        "haxe" => Some(parse_with_lexer(HaxeToken::lexer(text), initial_state)),
-        "java" => Some(parse_with_lexer(JavaToken::lexer(text), initial_state)),
+        "c" => Some(parse_with_lexer(CToken::lexer, lines, initial_state)),
+        "clojure" => Some(parse_with_lexer(ClojureToken::lexer, lines, initial_state)),
+        "cpp" => Some(parse_with_lexer(CppToken::lexer, lines, initial_state)),
+        "csharp" => Some(parse_with_lexer(CSharpToken::lexer, lines, initial_state)),
+        "dart" => Some(parse_with_lexer(DartToken::lexer, lines, initial_state)),
+        "elixir" => Some(parse_with_lexer(ElixirToken::lexer, lines, initial_state)),
+        "erlang" => Some(parse_with_lexer(ErlangToken::lexer, lines, initial_state)),
+        "fsharp" => Some(parse_with_lexer(FSharpToken::lexer, lines, initial_state)),
+        "go" => Some(parse_with_lexer(GoToken::lexer, lines, initial_state)),
+        "haskell" => Some(parse_with_lexer(HaskellToken::lexer, lines, initial_state)),
+        "java" => Some(parse_with_lexer(JavaToken::lexer, lines, initial_state)),
         "javascript" => Some(parse_with_lexer(
-            JavaScriptToken::lexer(text),
+            JavaScriptToken::lexer,
+            lines,
             initial_state,
         )),
-        "json" | "json5" | "jsonc" => Some(parse_with_lexer(JsonToken::lexer(text), initial_state)),
-        "kotlin" => Some(parse_with_lexer(KotlinToken::lexer(text), initial_state)),
-        "lean" => Some(parse_with_lexer(LeanToken::lexer(text), initial_state)),
-        "lua" => Some(parse_with_lexer(LuaToken::lexer(text), initial_state)),
-        "objc" => Some(parse_with_lexer(ObjCToken::lexer(text), initial_state)),
-        "ocaml" => Some(parse_with_lexer(OCamlToken::lexer(text), initial_state)),
-        "perl" => Some(parse_with_lexer(PerlToken::lexer(text), initial_state)),
-        "php" => Some(parse_with_lexer(PhpToken::lexer(text), initial_state)),
-        "python" => Some(parse_with_lexer(PythonToken::lexer(text), initial_state)),
-        "r" => Some(parse_with_lexer(RToken::lexer(text), initial_state)),
-        "ruby" => Some(parse_with_lexer(RubyToken::lexer(text), initial_state)),
-        "rust" => Some(parse_with_lexer(RustToken::lexer(text), initial_state)),
-        "scala" => Some(parse_with_lexer(ScalaToken::lexer(text), initial_state)),
-        "sh" | "bash" | "zsh" | "fish" => {
-            Some(parse_with_lexer(ShellToken::lexer(text), initial_state))
+        "json" | "json5" | "jsonc" => {
+            Some(parse_with_lexer(JsonToken::lexer, lines, initial_state))
         }
-        "swift" => Some(parse_with_lexer(SwiftToken::lexer(text), initial_state)),
-        "toml" => Some(parse_with_lexer(TomlToken::lexer(text), initial_state)),
+        "kotlin" => Some(parse_with_lexer(KotlinToken::lexer, lines, initial_state)),
+        "lean" => Some(parse_with_lexer(LeanToken::lexer, lines, initial_state)),
+        "lua" => Some(parse_with_lexer(LuaToken::lexer, lines, initial_state)),
+        "objc" => Some(parse_with_lexer(ObjCToken::lexer, lines, initial_state)),
+        "ocaml" => Some(parse_with_lexer(OCamlToken::lexer, lines, initial_state)),
+        "perl" => Some(parse_with_lexer(PerlToken::lexer, lines, initial_state)),
+        "php" => Some(parse_with_lexer(PhpToken::lexer, lines, initial_state)),
+        "python" => Some(parse_with_lexer(PythonToken::lexer, lines, initial_state)),
+        "r" => Some(parse_with_lexer(RToken::lexer, lines, initial_state)),
+        "ruby" => Some(parse_with_lexer(RubyToken::lexer, lines, initial_state)),
+        "rust" => Some(parse_with_lexer(RustToken::lexer, lines, initial_state)),
+        "scala" => Some(parse_with_lexer(ScalaToken::lexer, lines, initial_state)),
+        "sh" | "bash" | "zsh" | "fish" => {
+            Some(parse_with_lexer(ShellToken::lexer, lines, initial_state))
+        }
+        "swift" => Some(parse_with_lexer(SwiftToken::lexer, lines, initial_state)),
+        "toml" => Some(parse_with_lexer(TomlToken::lexer, &lines, initial_state)),
         "typescript" => Some(parse_with_lexer(
-            TypeScriptToken::lexer(text),
+            TypeScriptToken::lexer,
+            lines,
             initial_state,
         )),
-        "typst" => Some(parse_with_lexer(TypstToken::lexer(text), initial_state)),
-        "zig" => Some(parse_with_lexer(ZigToken::lexer(text), initial_state)),
+        "typst" => Some(parse_with_lexer(TypstToken::lexer, lines, initial_state)),
+        "zig" => Some(parse_with_lexer(ZigToken::lexer, lines, initial_state)),
         _ => None,
     }
 }
 
 fn parse_with_lexer<'s, T>(
-    mut lexer: Lexer<'s, T>,
+    mut lexer: impl FnMut(&'s str) -> Lexer<'s, T>,
+    lines: &[&'s str],
     initial_state: ParseState,
 ) -> (Vec<Vec<Match>>, Vec<ParseState>)
 where
@@ -90,87 +94,90 @@ where
     let mut state_by_line = vec![];
     let mut stack = vec![];
 
-    let mut current_line_matches = vec![];
-    let mut col_offset = 0;
-    let mut escaped_position = None;
-
     let mut state = initial_state;
-    while let Some(token) = lexer.next() {
-        let token = match token {
-            Ok(token) => token.into(),
-            Err(_) => continue,
-        };
-
-        let should_escape = matches!(escaped_position, Some(pos) if (pos == lexer.span().start));
-        escaped_position = None;
+    for line in lines.iter() {
+        let mut escaped_position = None;
+        let mut current_line_matches = vec![];
+        let mut lexer = lexer(line);
 
         use {ParseState::*, Token::*};
-        match (&state, token, should_escape) {
-            (Normal, DelimiterOpen(open), false) => {
-                let closing = match open {
-                    "(" => ")",
-                    "[" => "]",
-                    "{" => "}",
-                    "<" => ">",
-                    char => char,
-                };
-                let _match = Match {
-                    text: open.to_string(),
-                    col: lexer.span().start - col_offset,
-                    closing: Some(closing.to_string()),
-                    stack_height: stack.len(),
-                };
-                stack.push(closing);
-                current_line_matches.push(_match);
-            }
-            (Normal, DelimiterClose(close), false) => {
-                if let Some(closing) = stack.last() {
-                    if close == *closing {
-                        stack.pop();
+        while let Some(token) = lexer.next() {
+            let token = match token {
+                Ok(token) => token.into(),
+                Err(_) => continue,
+            };
+
+            let should_escape =
+                matches!(escaped_position, Some(pos) if (pos == lexer.span().start));
+            escaped_position = None;
+
+            match (&state, token, should_escape) {
+                (Normal, DelimiterOpen(open), false) => {
+                    let closing = match open {
+                        "(" => ")",
+                        "[" => "]",
+                        "{" => "}",
+                        "<" => ">",
+                        char => char,
+                    };
+                    let _match = Match {
+                        text: open.to_string(),
+                        col: lexer.span().start,
+                        closing: Some(closing.to_string()),
+                        stack_height: stack.len(),
+                    };
+                    stack.push(closing);
+                    current_line_matches.push(_match);
+                }
+                (Normal, DelimiterClose(close), false) => {
+                    if let Some(closing) = stack.last() {
+                        if close == *closing {
+                            stack.pop();
+                        }
                     }
+
+                    let _match = Match {
+                        text: close.to_string(),
+                        col: lexer.span().start,
+                        closing: None,
+                        stack_height: stack.len(),
+                    };
+                    current_line_matches.push(_match);
                 }
 
-                let _match = Match {
-                    text: close.to_string(),
-                    col: lexer.span().start - col_offset,
-                    closing: None,
-                    stack_height: stack.len(),
-                };
-                current_line_matches.push(_match);
+                // TODO: continue outer loop
+                (Normal, LineComment, false) => state = InLineComment,
+
+                (Normal, BlockCommentOpen, _) => state = InBlockComment,
+                (InBlockComment, BlockCommentClose, _) => state = Normal,
+
+                (Normal, String(open), false) => state = InString(open.to_string()),
+                (InString(open), String(close), false) if open == close => state = Normal,
+
+                (Normal, BlockStringSymmetric(open), _) => {
+                    state = InBlockStringSymmetric(open.to_string())
+                }
+                (InBlockStringSymmetric(open), BlockStringSymmetric(close), _) if open == close => {
+                    state = Normal
+                }
+
+                (Normal, BlockStringOpen, _) => state = InBlockString,
+                (InBlockString, BlockStringClose, _) => state = Normal,
+
+                (_, Escape, false) => escaped_position = Some(lexer.span().end),
+                _ => {}
             }
-
-            (Normal, LineComment, false) => state = InLineComment,
-            (InLineComment, NewLine, _) => state = Normal,
-
-            (Normal, BlockCommentOpen, _) => state = InBlockComment,
-            (InBlockComment, BlockCommentClose, _) => state = Normal,
-
-            (Normal, String(open), false) => state = InString(open.to_string()),
-            (InString(open), String(close), false) if open == close => state = Normal,
-            (InString(_), NewLine, false) => state = Normal,
-
-            (Normal, BlockStringSymmetric(open), _) => {
-                state = InBlockStringSymmetric(open.to_string())
-            }
-            (InBlockStringSymmetric(open), BlockStringSymmetric(close), _) if open == close => {
-                state = Normal
-            }
-
-            (Normal, BlockStringOpen, _) => state = InBlockString,
-            (InBlockString, BlockStringClose, _) => state = Normal,
-
-            (_, Escape, false) => escaped_position = Some(lexer.span().end),
-            _ => {}
         }
 
-        if matches!(token, NewLine) {
-            col_offset = lexer.span().end;
-            matches_by_line.push(std::mem::take(&mut current_line_matches));
-            state_by_line.push(state.clone());
-        }
+        // Reset state for linewise strings and comments
+        state = match state {
+            InString(_) | InLineComment => Normal,
+            state => state,
+        };
+
+        matches_by_line.push(std::mem::take(&mut current_line_matches));
+        state_by_line.push(state.clone());
     }
 
-    matches_by_line.push(current_line_matches);
-    state_by_line.push(state);
     (matches_by_line, state_by_line)
 }

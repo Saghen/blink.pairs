@@ -27,23 +27,31 @@ fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
 
 fn parse_buffer(
     _lua: &Lua,
-    (bufnr, filetype, text, start_line, old_end_line, new_end_line): (
+    (bufnr, filetype, lines, start_line, old_end_line, new_end_line): (
         usize,
         String,
-        String,
+        Vec<String>,
         Option<usize>,
         Option<usize>,
         Option<usize>,
     ),
 ) -> LuaResult<bool> {
+    let lines_ref = lines.iter().map(|str| str.as_ref()).collect::<Vec<_>>();
+
     let mut parsed_buffers = get_parsed_buffers();
 
     // Incremental parse
     if let Some(parsed_buffer) = parsed_buffers.get_mut(&bufnr) {
-        Ok(parsed_buffer.reparse_range(&filetype, &text, start_line, old_end_line, new_end_line))
+        Ok(parsed_buffer.reparse_range(
+            &filetype,
+            &lines_ref,
+            start_line,
+            old_end_line,
+            new_end_line,
+        ))
     }
     // Full parse
-    else if let Some(parsed_buffer) = ParsedBuffer::parse(&filetype, &text) {
+    else if let Some(parsed_buffer) = ParsedBuffer::parse(&filetype, &lines_ref) {
         parsed_buffers.insert(bufnr, parsed_buffer);
         Ok(true)
     } else {
