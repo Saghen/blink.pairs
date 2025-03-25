@@ -45,6 +45,7 @@ pub fn parse_filetype(
         "fsharp" => Some(parse_with_lexer(FSharpToken::lexer(text), initial_state)),
         "go" => Some(parse_with_lexer(GoToken::lexer(text), initial_state)),
         "haskell" => Some(parse_with_lexer(HaskellToken::lexer(text), initial_state)),
+        "haxe" => Some(parse_with_lexer(HaxeToken::lexer(text), initial_state)),
         "java" => Some(parse_with_lexer(JavaToken::lexer(text), initial_state)),
         "javascript" => Some(parse_with_lexer(
             JavaScriptToken::lexer(text),
