@@ -71,10 +71,11 @@ fn parse_with_lexer<'s, T>(
 where
     T: Into<Token<'s>> + Logos<'s>,
 {
-    let mut matches_by_line = vec![vec![]];
+    let mut matches_by_line = vec![];
     let mut state_by_line = vec![];
     let mut stack = vec![];
 
+    let mut current_line_matches = vec![];
     let mut line_number = 0;
     let mut col_offset = 0;
     let mut escaped_position = None;
@@ -108,7 +109,7 @@ where
                     stack_height: stack.len(),
                 };
                 stack.push(closing.clone());
-                matches_by_line.last_mut().unwrap().push(_match);
+                current_line_matches.push(_match);
             }
             (Normal, DelimiterClose(close), false) => {
                 if let Some(closing) = stack.last() {
@@ -124,7 +125,7 @@ where
                     closing: None,
                     stack_height: stack.len(),
                 };
-                matches_by_line.last_mut().unwrap().push(_match);
+                current_line_matches.push(_match);
             }
 
             (Normal, LineComment, false) => state = InLineComment,
@@ -154,11 +155,12 @@ where
         if matches!(token, NewLine) {
             line_number += 1;
             col_offset = lexer.span().end;
-            matches_by_line.push(vec![]);
+            matches_by_line.push(std::mem::take(&mut current_line_matches));
             state_by_line.push(state.clone());
         }
     }
 
-    state_by_line.push(state.clone());
+    matches_by_line.push(current_line_matches);
+    state_by_line.push(state);
     (matches_by_line, state_by_line)
 }
