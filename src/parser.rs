@@ -38,6 +38,7 @@ pub fn parse_filetype(
         "c" => Some(parse_with_lexer(CToken::lexer(text), initial_state)),
         "cpp" => Some(parse_with_lexer(CppToken::lexer(text), initial_state)),
         "csharp" => Some(parse_with_lexer(CSharpToken::lexer(text), initial_state)),
+        "dart" => Some(parse_with_lexer(DartToken::lexer(text), initial_state)),
         "go" => Some(parse_with_lexer(GoToken::lexer(text), initial_state)),
         "haskell" => Some(parse_with_lexer(HaskellToken::lexer(text), initial_state)),
         "java" => Some(parse_with_lexer(JavaToken::lexer(text), initial_state)),
