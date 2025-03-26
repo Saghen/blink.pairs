@@ -1,3 +1,5 @@
+#![feature(portable_simd)]
+
 use buffer::ParsedBuffer;
 use languages::{AvailableToken, TokenType};
 use mlua::prelude::*;
@@ -9,6 +11,7 @@ use parser::{Match, MatchWithLine};
 pub mod buffer;
 pub mod languages;
 pub mod parser;
+pub mod simd;
 
 static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
