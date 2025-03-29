@@ -47,6 +47,7 @@ pub fn parse_filetype(
         "javascript" => parse_with_lexer(JavaScriptToken::lexer, lines, initial_state),
         "json" | "json5" | "jsonc" => parse_with_lexer(JsonToken::lexer, lines, initial_state),
         "kotlin" => parse_with_lexer(KotlinToken::lexer, lines, initial_state),
+        "tex" | "bib" => parse_with_lexer(LatexToken::lexer, lines, initial_state),
         "lean" => parse_with_lexer(LeanToken::lexer, lines, initial_state),
         "lua" => parse_with_lexer(LuaToken::lexer, lines, initial_state),
         "objc" => parse_with_lexer(ObjCToken::lexer, lines, initial_state),
