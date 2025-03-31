@@ -165,7 +165,14 @@ function mappings.is_escaped()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line()
 
-  return line:sub(cursor[2], cursor[2]) == '\\'
+  local col = cursor[2]
+  local count = 0
+  while col > 0 and line:sub(col, col) == '\\' do
+    count = count + 1
+    col = col - 1
+  end
+
+  return count % 2 == 1
 end
 
 return mappings
