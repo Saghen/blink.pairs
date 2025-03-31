@@ -21,6 +21,8 @@ end
 
 function mappings.on_key(key, rules)
   return function()
+    if vim.api.nvim_get_mode().mode:find('R') ~= nil then return key end
+
     local active_rules = rule_lib.get_all_active(rules)
 
     for _, rule in ipairs(active_rules) do
