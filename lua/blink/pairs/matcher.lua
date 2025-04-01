@@ -138,9 +138,9 @@ function M.try_lexer_match(ctx)
       return true
     end
 
-    local all_lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+    local line_count = vim.api.nvim_buf_line_count(bufnr)
 
-    for search_row = row, #all_lines - 1 do
+    for search_row = row, line_count - 1 do
       local search_col = 0
       if search_row == row then search_col = current_match.col + 1 end
 
