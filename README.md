@@ -53,7 +53,14 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
         'BlinkPairsPurple',
         'BlinkPairsBlue',
       },
+      matchparen = {
+        enabled = true,
+        group = 'MatchParen',
+        priority = 250,
+        treesitter = true,
+      },
     },
     debug = false,
   }
 }
+```

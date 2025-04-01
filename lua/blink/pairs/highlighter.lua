@@ -1,5 +1,11 @@
 local highlighter = {}
 
+--- @class blink.pairs.MatchparenConfig
+--- @field enabled boolean
+--- @field group string Highlight group for the matching pair
+--- @field priority number Priority of the highlight
+--- @field treesitter boolean Whether to use treesitter for matching pairs
+
 --- @param config blink.pairs.HighlightsConfig
 function highlighter.register(config)
   vim.api.nvim_set_decoration_provider(config.ns, {
@@ -16,6 +22,8 @@ function highlighter.register(config)
       end
     end,
   })
+
+  if config.matchparen and config.matchparen.enabled then require('blink.pairs.matchparen').setup(config) end
 end
 
 return highlighter
