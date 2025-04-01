@@ -1,5 +1,5 @@
 use logos::{Lexer, Logos};
-use mlua::{serde::Serializer, IntoLua};
+use mlua::{serde::Serializer, IntoLua, SerializeOptions};
 use serde::Serialize;
 
 use super::languages::*;
@@ -12,10 +12,12 @@ pub struct Match {
     pub stack_height: usize,
 }
 
-// TODO: how do we derive this?
 impl IntoLua for Match {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
-        self.serialize(Serializer::new(lua))
+        self.serialize(Serializer::new_with_options(
+            lua,
+            SerializeOptions::new().serialize_none_to_null(false),
+        ))
     }
 }
 
