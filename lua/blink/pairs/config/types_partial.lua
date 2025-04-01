@@ -20,3 +20,6 @@
 --- @field space? boolean | fun(): boolean
 
 --- @class (exact) blink.pairs.HighlightsConfigPartial : blink.pairs.HighlightsConfig, {}
+--- @field matchparen? blink.pairs.MatchparenConfigPartial
+
+--- @class (exact) blink.pairs.MatchparenConfigPartial : blink.pairs.MatchparenConfig
