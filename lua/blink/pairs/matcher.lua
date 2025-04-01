@@ -145,18 +145,16 @@ function M.try_lexer_match(ctx)
       if search_row == row then search_col = current_match.col + 1 end
 
       local search_matches = require('blink.pairs.rust').get_parsed_line(bufnr, search_row)
-      if search_matches then
-        for i = 1, #search_matches do
-          local match = search_matches[i]
-          if match.col >= search_col then
-            if not match.closing and match.text == closing_text and match.stack_height == stack_height then
-              matching_mark = create_highlight(bufnr, search_row, match.col, match.col + 1, config)
-              break
-            end
+      for i = 1, #search_matches do
+        local match = search_matches[i]
+        if match.col >= search_col then
+          if not match.closing and match.text == closing_text and match.stack_height == stack_height then
+            matching_mark = create_highlight(bufnr, search_row, match.col, match.col + 1, config)
+            break
           end
         end
-        if matching_mark then break end
       end
+      if matching_mark then break end
     end
   else
     local text = current_match.text
