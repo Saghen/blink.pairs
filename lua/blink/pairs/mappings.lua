@@ -19,6 +19,31 @@ function mappings.register(rule_definitions)
   map('<Space>', mappings.space(all_rules))
 end
 
+--- @param rule_definitions blink.pairs.RuleDefinitions
+function mappings.unregister(rule_definitions)
+  local rules_by_key = rule_lib.parse(rule_definitions)
+
+  local unmap = function(lhs) vim.keymap.del('i', lhs) end
+
+  for key, rules in pairs(rules_by_key) do
+    if #rules > 0 then unmap(key) end
+  end
+
+  unmap('<BS>')
+  unmap('<CR>')
+  unmap('<Space>')
+end
+
+function mappings.enable()
+  local config = require('blink.pairs.config')
+  mappings.register(config.mappings.pairs)
+end
+
+function mappings.disable()
+  local config = require('blink.pairs.config')
+  mappings.unregister(config.mappings.pairs)
+end
+
 function mappings.on_key(key, rules)
   return function()
     if vim.api.nvim_get_mode().mode:find('R') ~= nil then return key end
