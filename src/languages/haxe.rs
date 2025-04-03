@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(HaxeToken, {
+define_token_enum!(HaxeToken, haxe_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

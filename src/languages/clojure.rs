@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ClojureToken, {
+define_token_enum!(ClojureToken, clojure_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

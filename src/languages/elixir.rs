@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ElixirToken, {
+define_token_enum!(ElixirToken, elixir_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

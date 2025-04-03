@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(CppToken, {
+define_token_enum!(CppToken, cpp_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

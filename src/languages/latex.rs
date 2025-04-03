@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(LatexToken, {
+define_token_enum!(LatexToken, latex_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

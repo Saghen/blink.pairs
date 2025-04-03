@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(TomlToken, {
+define_token_enum!(TomlToken, toml_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

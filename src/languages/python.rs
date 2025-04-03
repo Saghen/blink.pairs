@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(PythonToken, {
+define_token_enum!(PythonToken, python_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

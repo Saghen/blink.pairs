@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(RubyToken, {
+define_token_enum!(RubyToken, ruby_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

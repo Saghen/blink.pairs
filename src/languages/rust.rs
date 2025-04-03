@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(RustToken, {
+define_token_enum!(RustToken, rust_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

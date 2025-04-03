@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ScalaToken, {
+define_token_enum!(ScalaToken, scala_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

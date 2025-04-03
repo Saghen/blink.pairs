@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ObjCToken, {
+define_token_enum!(ObjCToken, objc_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

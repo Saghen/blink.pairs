@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ShellToken, {
+define_token_enum!(ShellToken, shell_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

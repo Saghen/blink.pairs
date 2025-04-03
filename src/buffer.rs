@@ -1,4 +1,4 @@
-use crate::parser::{parse_filetype, Match, ParseState};
+use crate::parser::{parse_filetype, Match, MatchWithLine, ParseState};
 
 pub struct ParsedBuffer {
     matches_by_line: Vec<Vec<Match>>,
@@ -60,6 +60,64 @@ impl ParsedBuffer {
         self.matches_by_line.get(line_number).cloned()
     }
 
+    pub fn match_at(&self, line_number: usize, col: usize) -> Option<Match> {
+        self.matches_by_line
+            .get(line_number)?
+            .iter()
+            .find(|match_| (match_.col..(match_.col + match_.text.len())).contains(&col))
+            .cloned()
+    }
+
+    pub fn match_pair(
+        &self,
+        line_number: usize,
+        col: usize,
+    ) -> Option<(MatchWithLine, MatchWithLine)> {
+        let match_at_pos = self.match_at(line_number, col)?.with_line(line_number);
+
+        // Opening match
+        if match_at_pos.closing.is_some() {
+            let closing_match = self.matches_by_line[line_number..]
+                .iter()
+                .enumerate()
+                .map(|(matches_line_number, matches)| (matches_line_number + line_number, matches))
+                .find_map(|(matches_line_number, matches)| {
+                    matches
+                        .iter()
+                        .find(|match_| {
+                            (line_number != matches_line_number || match_.col > col)
+                                && match_at_pos.type_ == match_.type_
+                                && match_at_pos.closing == Some(match_.text)
+                                && match_at_pos.stack_height == match_.stack_height
+                        })
+                        .map(|match_| match_.with_line(matches_line_number))
+                })?;
+
+            return Some((match_at_pos, closing_match));
+        }
+        // Closing match
+        else {
+            let opening_match = self.matches_by_line[0..(line_number + 1)]
+                .iter()
+                .enumerate()
+                .rev()
+                .find_map(|(matches_line_number, matches)| {
+                    matches
+                        .iter()
+                        .rev()
+                        .find(|match_| {
+                            (line_number != matches_line_number || match_.col < col)
+                                && match_at_pos.type_ == match_.type_
+                                && Some(match_at_pos.text) == match_.closing
+                                && match_at_pos.stack_height == match_.stack_height
+                        })
+                        .map(|match_| match_.with_line(matches_line_number))
+                })?;
+
+            return Some((opening_match, match_at_pos));
+        }
+    }
+
     fn recalculate_stack_heights(&mut self) {
         let mut stack = vec![];
 
@@ -68,7 +126,7 @@ impl ParsedBuffer {
                 match &match_.closing {
                     // Opening delimiter
                     Some(closing) => {
-                        match_.stack_height = stack.len();
+                        match_.stack_height = Some(stack.len());
                         stack.push(closing);
                     }
                     // Closing delimiter
@@ -78,7 +136,7 @@ impl ParsedBuffer {
                                 stack.pop();
                             }
                         }
-                        match_.stack_height = stack.len();
+                        match_.stack_height = Some(stack.len());
                     }
                 }
             }

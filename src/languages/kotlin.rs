@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(KotlinToken, {
+define_token_enum!(KotlinToken, kotlin_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

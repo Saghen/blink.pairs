@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ErlangToken, {
+define_token_enum!(ErlangToken, erlang_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

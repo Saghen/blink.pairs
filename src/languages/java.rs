@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(JavaToken, {
+define_token_enum!(JavaToken, java_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

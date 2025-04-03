@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(DartToken, {
+define_token_enum!(DartToken, dart_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

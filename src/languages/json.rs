@@ -1,7 +1,7 @@
 use crate::define_token_enum;
 
 // Includes comments from jsonc and json5
-define_token_enum!(JsonToken, {
+define_token_enum!(JsonToken, json_tokens, {
     delimiters: {
         "[" => "]",
         "{" => "}"

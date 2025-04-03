@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(FSharpToken, {
+define_token_enum!(FSharpToken, fsharp_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

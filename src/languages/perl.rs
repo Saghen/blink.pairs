@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(PerlToken, {
+define_token_enum!(PerlToken, perl_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

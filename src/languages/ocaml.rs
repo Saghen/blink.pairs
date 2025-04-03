@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(OCamlToken, {
+define_token_enum!(OCamlToken, ocaml_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

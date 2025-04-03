@@ -1,9 +1,10 @@
 use buffer::ParsedBuffer;
+use languages::{AvailableToken, TokenType};
 use mlua::prelude::*;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use parser::Match;
+use parser::{Match, MatchWithLine};
 
 pub mod buffer;
 pub mod languages;
@@ -59,16 +60,48 @@ fn parse_buffer(
     }
 }
 
-fn get_parsed_line(_lua: &Lua, (bufnr, line_number): (usize, usize)) -> LuaResult<Vec<Match>> {
+fn get_line_matches(
+    _lua: &Lua,
+    (bufnr, line_number, type_): (usize, usize, Option<u8>),
+) -> LuaResult<Vec<Match>> {
     let parsed_buffers = get_parsed_buffers();
+    let type_ = type_
+        // TODO: don't ignore the error
+        .and_then(|type_| type_.try_into().ok())
+        .unwrap_or(TokenType::Delimiter);
 
     if let Some(parsed_buffer) = parsed_buffers.get(&bufnr) {
         if let Some(line_matches) = parsed_buffer.line_matches(line_number) {
-            return Ok(line_matches);
+            return Ok(line_matches
+                .iter()
+                .filter(|match_| match_.type_ == type_)
+                .cloned()
+                .collect());
         }
     }
 
     Ok(Vec::new())
+}
+
+fn get_match_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<Match>> {
+    Ok(get_parsed_buffers()
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.match_at(row, col)))
+}
+
+fn get_match_pair(
+    _lua: &Lua,
+    (bufnr, row, col): (usize, usize, usize),
+) -> LuaResult<Option<Vec<MatchWithLine>>> {
+    Ok(get_parsed_buffers()
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.match_pair(row, col))
+        .map(|(open, close)| vec![open, close]))
+}
+
+fn get_filetype_tokens(_lua: &Lua, (filetype,): (String,)) -> LuaResult<Vec<AvailableToken>> {
+    let tokens = parser::filetype_tokens(&filetype);
+    Ok(tokens.unwrap_or_default())
 }
 
 // NOTE: skip_memory_check greatly improves performance
@@ -77,6 +110,12 @@ fn get_parsed_line(_lua: &Lua, (bufnr, line_number): (usize, usize)) -> LuaResul
 fn blink_pairs(lua: &Lua) -> LuaResult<LuaTable> {
     let exports = lua.create_table()?;
     exports.set("parse_buffer", lua.create_function(parse_buffer)?)?;
-    exports.set("get_parsed_line", lua.create_function(get_parsed_line)?)?;
+    exports.set("get_line_matches", lua.create_function(get_line_matches)?)?;
+    exports.set("get_match_at", lua.create_function(get_match_at)?)?;
+    exports.set("get_match_pair", lua.create_function(get_match_pair)?)?;
+    exports.set(
+        "get_filetype_tokens",
+        lua.create_function(get_filetype_tokens)?,
+    )?;
     Ok(exports)
 }

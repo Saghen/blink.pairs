@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(GoToken, {
+define_token_enum!(GoToken, go_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

@@ -5,6 +5,11 @@
 --- @field ns integer
 --- @field matchparen blink.pairs.MatchparenConfig
 
+--- @class (exact) blink.pairs.MatchparenConfig
+--- @field enabled boolean
+--- @field group string Highlight group for the matching pair
+--- @field priority number Priority of the highlight
+
 local validate = require('blink.pairs.config.utils').validate
 local highlights = {
   --- @type blink.pairs.HighlightsConfig
@@ -21,7 +26,6 @@ local highlights = {
       enabled = true,
       group = 'MatchParen',
       priority = 250,
-      treesitter = true,
     },
   },
 }
@@ -35,14 +39,11 @@ function highlights.validate(config)
     matchparen = { config.matchparen, 'table', true },
   }, config)
 
-  if config.matchparen then
-    validate('highlights.matchparen', {
-      enabled = { config.matchparen.enabled, 'boolean' },
-      group = { config.matchparen.group, 'string' },
-      priority = { config.matchparen.priority, 'number' },
-      treesitter = { config.matchparen.treesitter, 'boolean' },
-    }, config.matchparen)
-  end
+  validate('highlights.matchparen', {
+    enabled = { config.matchparen.enabled, 'boolean' },
+    group = { config.matchparen.group, 'string' },
+    priority = { config.matchparen.priority, 'number' },
+  }, config.matchparen)
 end
 
 return highlights

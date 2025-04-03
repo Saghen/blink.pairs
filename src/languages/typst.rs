@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(TypstToken, {
+define_token_enum!(TypstToken, typst_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

@@ -6,13 +6,52 @@ use super::languages::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Match {
+    #[serde(skip)]
+    pub type_: TokenType,
+
     pub text: &'static str,
-    pub col: usize,
     pub closing: Option<&'static str>,
-    pub stack_height: usize,
+
+    pub col: usize,
+    pub stack_height: Option<usize>,
+}
+
+impl Match {
+    pub fn with_line(&self, line: usize) -> MatchWithLine {
+        MatchWithLine {
+            type_: self.type_,
+            text: self.text,
+            col: self.col,
+            closing: self.closing,
+            stack_height: self.stack_height,
+            line,
+        }
+    }
 }
 
 impl IntoLua for Match {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        self.serialize(Serializer::new_with_options(
+            lua,
+            SerializeOptions::new().serialize_none_to_null(false),
+        ))
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MatchWithLine {
+    #[serde(skip)]
+    pub type_: TokenType,
+
+    pub text: &'static str,
+    pub closing: Option<&'static str>,
+
+    pub line: usize,
+    pub col: usize,
+    pub stack_height: Option<usize>,
+}
+
+impl IntoLua for MatchWithLine {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
         self.serialize(Serializer::new_with_options(
             lua,
@@ -25,7 +64,6 @@ impl IntoLua for Match {
 pub enum ParseState {
     Normal,
     InBlockComment(&'static str),
-    InBlockStringSymmetric(&'static str),
     InBlockString(&'static str),
 }
 
@@ -46,7 +84,9 @@ pub fn parse_filetype(
         "go" => parse_with_lexer(GoToken::lexer, lines, initial_state),
         "haskell" => parse_with_lexer(HaskellToken::lexer, lines, initial_state),
         "java" => parse_with_lexer(JavaToken::lexer, lines, initial_state),
-        "javascript" => parse_with_lexer(JavaScriptToken::lexer, lines, initial_state),
+        "javascript" | "typescript" | "javascriptreact" | "typescriptreact" => {
+            parse_with_lexer(JavaScriptToken::lexer, lines, initial_state)
+        }
         "json" | "json5" | "jsonc" => parse_with_lexer(JsonToken::lexer, lines, initial_state),
         "kotlin" => parse_with_lexer(KotlinToken::lexer, lines, initial_state),
         "tex" | "bib" => parse_with_lexer(LatexToken::lexer, lines, initial_state),
@@ -64,9 +104,45 @@ pub fn parse_filetype(
         "sh" | "bash" | "zsh" | "fish" => parse_with_lexer(ShellToken::lexer, lines, initial_state),
         "swift" => parse_with_lexer(SwiftToken::lexer, lines, initial_state),
         "toml" => parse_with_lexer(TomlToken::lexer, lines, initial_state),
-        "typescript" => parse_with_lexer(TypeScriptToken::lexer, lines, initial_state),
         "typst" => parse_with_lexer(TypstToken::lexer, lines, initial_state),
         "zig" => parse_with_lexer(ZigToken::lexer, lines, initial_state),
+        _ => return None,
+    })
+}
+
+pub fn filetype_tokens(filetype: &str) -> Option<Vec<AvailableToken>> {
+    Some(match filetype {
+        "c" => c_tokens(),
+        "clojure" => clojure_tokens(),
+        "cpp" => cpp_tokens(),
+        "csharp" => csharp_tokens(),
+        "dart" => dart_tokens(),
+        "elixir" => elixir_tokens(),
+        "erlang" => erlang_tokens(),
+        "fsharp" => fsharp_tokens(),
+        "go" => go_tokens(),
+        "haskell" => haskell_tokens(),
+        "java" => java_tokens(),
+        "javascript" | "typescript" | "javascriptreact" | "typescriptreact" => javascript_tokens(),
+        "json" | "json5" | "jsonc" => json_tokens(),
+        "kotlin" => kotlin_tokens(),
+        "latex" => latex_tokens(),
+        "lean" => lean_tokens(),
+        "lua" => lua_tokens(),
+        "objc" => objc_tokens(),
+        "ocaml" => ocaml_tokens(),
+        "perl" => perl_tokens(),
+        "php" => php_tokens(),
+        "python" => python_tokens(),
+        "r" => r_tokens(),
+        "ruby" => ruby_tokens(),
+        "rust" => rust_tokens(),
+        "scala" => scala_tokens(),
+        "shell" => shell_tokens(),
+        "swift" => swift_tokens(),
+        "toml" => toml_tokens(),
+        "typst" => typst_tokens(),
+        "zig" => zig_tokens(),
         _ => return None,
     })
 }
@@ -102,14 +178,15 @@ where
 
             match (&state, token, should_escape) {
                 (Normal, DelimiterOpen { text, closing }, false) => {
-                    let _match = Match {
+                    let match_ = Match {
+                        type_: TokenType::Delimiter,
                         text,
                         col: lexer.span().start,
                         closing: Some(closing),
-                        stack_height: stack.len(),
+                        stack_height: Some(stack.len()),
                     };
                     stack.push(closing);
-                    current_line_matches.push(_match);
+                    current_line_matches.push(match_);
                 }
                 (Normal, DelimiterClose(text), false) => {
                     if let Some(closing) = stack.last() {
@@ -118,38 +195,88 @@ where
                         }
                     }
 
-                    let _match = Match {
+                    let match_ = Match {
+                        type_: TokenType::Delimiter,
                         text,
                         col: lexer.span().start,
                         closing: None,
-                        stack_height: stack.len(),
+                        stack_height: Some(stack.len()),
                     };
-                    current_line_matches.push(_match);
+                    current_line_matches.push(match_);
                 }
 
-                // Stop parsing rest of line
+                // Line comment - stop parsing rest of line
                 (Normal, LineComment, false) => break,
 
-                (Normal, BlockCommentOpen(closing), _) => state = InBlockComment(closing),
-                (InBlockComment(closing), BlockCommentClose(close), _) if *closing == close => {
+                // Block comment
+                (Normal, BlockCommentOpen { text, closing }, _) => {
+                    let match_ = Match {
+                        type_: TokenType::BlockComment,
+                        text,
+                        col: lexer.span().start,
+                        closing: Some(closing),
+                        stack_height: None,
+                    };
+                    current_line_matches.push(match_);
+                    state = InBlockComment(closing)
+                }
+                (InBlockComment(closing), BlockCommentClose(text), _) if *closing == text => {
+                    let match_ = Match {
+                        type_: TokenType::BlockComment,
+                        text,
+                        col: lexer.span().start,
+                        closing: None,
+                        stack_height: None,
+                    };
+                    current_line_matches.push(match_);
                     state = Normal
                 }
 
-                (Normal, BlockStringOpen(closing) | BlockStringSymmetric(closing), _) => {
+                // Block string
+                (Normal, BlockStringOpen { text, closing }, _) => {
+                    let match_ = Match {
+                        type_: TokenType::String,
+                        text,
+                        col: lexer.span().start,
+                        closing: Some(closing),
+                        stack_height: None,
+                    };
+                    current_line_matches.push(match_);
                     state = InBlockString(closing)
+                }
+                (Normal, BlockStringSymmetric(text), _) => {
+                    let match_ = Match {
+                        type_: TokenType::String,
+                        text,
+                        col: lexer.span().start,
+                        closing: Some(text),
+                        stack_height: None,
+                    };
+                    current_line_matches.push(match_);
+                    state = InBlockString(text)
                 }
                 (
                     InBlockString(closing),
-                    BlockStringClose(close) | BlockStringSymmetric(close),
+                    BlockStringClose(text) | BlockStringSymmetric(text),
                     _,
-                ) if *closing == close => state = Normal,
+                ) if *closing == text => {
+                    let match_ = Match {
+                        type_: TokenType::String,
+                        text,
+                        col: lexer.span().start,
+                        closing: None,
+                        stack_height: None,
+                    };
+                    current_line_matches.push(match_);
+                    state = Normal
+                }
 
                 (_, Escape, false) => escaped_position = Some(lexer.span().end),
                 _ => {}
             }
         }
 
-        matches_by_line.push(std::mem::take(&mut current_line_matches));
+        matches_by_line.push(current_line_matches);
         state_by_line.push(state.clone());
     }
 

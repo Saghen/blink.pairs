@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(JavaScriptToken, {
+define_token_enum!(JavaScriptToken, javascript_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

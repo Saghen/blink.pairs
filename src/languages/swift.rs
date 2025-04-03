@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(SwiftToken, {
+define_token_enum!(SwiftToken, swift_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(ZigToken, {
+define_token_enum!(ZigToken, zig_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",

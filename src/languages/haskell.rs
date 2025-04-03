@@ -1,6 +1,6 @@
 use crate::define_token_enum;
 
-define_token_enum!(HaskellToken, {
+define_token_enum!(HaskellToken, haskell_tokens, {
     delimiters: {
         "(" => ")",
         "[" => "]",
