@@ -8,6 +8,7 @@ use parser::{Match, MatchWithLine};
 
 pub mod buffer;
 pub mod languages;
+pub mod nom;
 pub mod parser;
 
 static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
