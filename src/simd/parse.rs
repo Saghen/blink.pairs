@@ -54,7 +54,7 @@ pub enum State {
     InBlockComment(&'static str),
 }
 
-pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
+pub fn parse(lines: &[&str]) -> (Vec<Vec<SimdMatch>>, Vec<State>) {
     let mut matches_by_line = Vec::with_capacity(lines.len());
     let mut line_matches = vec![];
 
@@ -159,7 +159,7 @@ pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
     matches_by_line.push(line_matches);
     state_by_line.push(state);
 
-    matches_by_line
+    (matches_by_line, state_by_line)
 }
 
 #[cfg(test)]
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_parse() {
         assert_eq!(
-            parse(&["{", "}"]),
+            parse(&["{", "}"]).0,
             vec![
                 vec![SimdMatch {
                     token: SimdMatchType::DelimiterOpen("{", "}"),
@@ -183,7 +183,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse(&["// comment {}", "}"]),
+            parse(&["// comment {}", "}"]).0,
             vec![
                 vec![SimdMatch {
                     token: SimdMatchType::LineComment("//"),
@@ -197,7 +197,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse(&["/* comment {} */", "}"]),
+            parse(&["/* comment {} */", "}"]).0,
             vec![
                 vec![
                     SimdMatch {
