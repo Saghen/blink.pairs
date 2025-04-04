@@ -1,5 +1,6 @@
-use super::tokenize::{self, tokenize, SimdToken, SimdTokenType};
+use super::tokenize::{tokenize, SimdToken, SimdTokenType};
 
+#[derive(Debug, PartialEq)]
 pub struct SimdMatch {
     pub token: SimdMatchType,
     pub col: usize,
@@ -14,18 +15,19 @@ impl From<SimdToken> for SimdMatch {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum SimdMatchType {
     DelimiterOpen(&'static str, &'static str),
     DelimiterClose(&'static str, &'static str),
 
     StringOpen(&'static str),
     StringClose(&'static str),
-    BlockStringOpen(&'static str),
-    BlockStringClose(&'static str),
+    BlockStringOpen(&'static str, &'static str),
+    BlockStringClose(&'static str, &'static str),
 
     LineComment(&'static str),
-    BlockCommentOpen(&'static str),
-    BlockCommentClose(&'static str),
+    BlockCommentOpen(&'static str, &'static str),
+    BlockCommentClose(&'static str, &'static str),
 }
 
 impl From<SimdTokenType> for SimdMatchType {
@@ -59,13 +61,22 @@ pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
     let mut state_by_line = Vec::with_capacity(lines.len());
     let mut state = State::Normal;
 
-    for token in tokenize(&lines.join("\n")) {
+    let text = lines.join("\n");
+
+    let mut tokens = tokenize(&text).peekable();
+    while let Some(token) = tokens.next() {
         use super::tokenize::SimdTokenType::*;
         use State::*;
 
         let col = token.col;
-        match (state, token.token) {
-            (_, NewLine) => {
+
+        match (
+            state,
+            token.token,
+            tokens.peek().map(|t| t.token).unwrap_or(None),
+        ) {
+            // New line
+            (_, NewLine, _) => {
                 matches_by_line.push(line_matches);
                 line_matches = vec![];
 
@@ -75,20 +86,23 @@ pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
                 state_by_line.push(state);
             }
 
+            // Delimiters
             (
                 Normal,
                 CurlyBraceOpen | CurlyBraceClose | SquareBracketOpen | SquareBracketClose
                 | ParenthesisOpen | ParenthesisClose,
+                _,
             ) => line_matches.push(token.into()),
 
-            (Normal, SingleQuote) => {
+            // Strings
+            (Normal, SingleQuote, _) => {
                 state = InString("'");
                 line_matches.push(SimdMatch {
                     token: SimdMatchType::StringOpen("'"),
                     col,
                 });
             }
-            (InString(delim), SingleQuote) if delim == "'" => {
+            (InString(delim), SingleQuote, _) if delim == "'" => {
                 state = Normal;
                 line_matches.push(SimdMatch {
                     token: SimdMatchType::StringClose(delim),
@@ -96,19 +110,47 @@ pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
                 });
             }
 
-            (Normal, DoubleQuote) => {
+            (Normal, DoubleQuote, _) => {
                 state = InString("\"");
                 line_matches.push(SimdMatch {
                     token: SimdMatchType::StringOpen("\""),
                     col,
                 });
             }
-            (InString(delim), DoubleQuote) if delim == "\"" => {
+            (InString(delim), DoubleQuote, _) if delim == "\"" => {
                 state = Normal;
                 line_matches.push(SimdMatch {
                     token: SimdMatchType::StringClose(delim),
                     col,
                 });
+            }
+
+            // Line comments
+            (Normal, ForwardSlash, ForwardSlash) => {
+                state = InLineComment;
+                line_matches.push(SimdMatch {
+                    token: SimdMatchType::LineComment("//"),
+                    col,
+                });
+                tokens.next(); // Skip next token
+            }
+
+            // Block comments
+            (Normal, ForwardSlash, Star) => {
+                state = InBlockComment("/*");
+                line_matches.push(SimdMatch {
+                    token: SimdMatchType::BlockCommentOpen("/*", "*/"),
+                    col,
+                });
+                tokens.next(); // Skip next token
+            }
+            (InBlockComment("/*"), Star, ForwardSlash) => {
+                state = Normal;
+                line_matches.push(SimdMatch {
+                    token: SimdMatchType::BlockCommentClose("/*", "*/"),
+                    col,
+                });
+                tokens.next(); // Skip next token
             }
 
             _ => {}
@@ -118,4 +160,60 @@ pub fn parse(lines: &[&str]) -> Vec<Vec<SimdMatch>> {
     state_by_line.push(state);
 
     matches_by_line
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(
+            parse(&["{", "}"]),
+            vec![
+                vec![SimdMatch {
+                    token: SimdMatchType::DelimiterOpen("{", "}"),
+                    col: 0,
+                }],
+                vec![SimdMatch {
+                    token: SimdMatchType::DelimiterClose("{", "}"),
+                    col: 0,
+                }]
+            ]
+        );
+
+        assert_eq!(
+            parse(&["// comment {}", "}"]),
+            vec![
+                vec![SimdMatch {
+                    token: SimdMatchType::LineComment("//"),
+                    col: 0
+                }],
+                vec![SimdMatch {
+                    token: SimdMatchType::DelimiterClose("{", "}"),
+                    col: 0
+                }]
+            ]
+        );
+
+        assert_eq!(
+            parse(&["/* comment {} */", "}"]),
+            vec![
+                vec![
+                    SimdMatch {
+                        token: SimdMatchType::BlockCommentOpen("/*", "*/"),
+                        col: 0
+                    },
+                    SimdMatch {
+                        token: SimdMatchType::BlockCommentClose("/*", "*/"),
+                        col: 14
+                    }
+                ],
+                vec![SimdMatch {
+                    token: SimdMatchType::DelimiterClose("{", "}"),
+                    col: 0
+                }]
+            ]
+        );
+    }
 }

@@ -2,7 +2,7 @@ use std::simd::cmp::SimdPartialEq;
 
 use super::SimdVec;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SimdToken {
     pub token: SimdTokenType,
     pub col: usize,
@@ -24,6 +24,10 @@ pub enum SimdTokenType {
 
     SingleQuote = 9,
     DoubleQuote = 10,
+    BackTick = 11,
+
+    ForwardSlash = 12,
+    Star = 13,
 }
 
 impl From<SimdTokenType> for u8 {
@@ -46,6 +50,9 @@ impl From<u8> for SimdTokenType {
             8 => SimdTokenType::ParenthesisClose,
             9 => SimdTokenType::SingleQuote,
             10 => SimdTokenType::DoubleQuote,
+            11 => SimdTokenType::BackTick,
+            12 => SimdTokenType::ForwardSlash,
+            13 => SimdTokenType::Star,
             _ => panic!("Invalid token value: {}", val),
         }
     }
@@ -84,6 +91,12 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
 
     let double_quote_token = SimdVec::splat(SimdTokenType::DoubleQuote.into());
     let double_quote = SimdVec::splat(b'"');
+
+    let forward_slash_token = SimdVec::splat(SimdTokenType::ForwardSlash.into());
+    let forward_slash = SimdVec::splat(b'/');
+
+    let star_token = SimdVec::splat(SimdTokenType::Star.into());
+    let star = SimdVec::splat(b'*');
 
     //
 
@@ -134,6 +147,13 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
                     .simd_eq(chunk)
                     .select(double_quote_token, tokens);
 
+            tokens = tokens
+                | forward_slash
+                    .simd_eq(chunk)
+                    .select(forward_slash_token, tokens);
+
+            tokens = tokens | star.simd_eq(chunk).select(star_token, tokens);
+
             // Apply parsed tokens
             let chunk_col = idx * SimdVec::LEN;
             tokens
@@ -143,11 +163,11 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
                 .map(move |(idx_in_chunk, token)| match token.into() {
                     SimdTokenType::None => None,
                     SimdTokenType::NewLine => {
-                        col_offset += idx_in_chunk;
+                        col_offset += idx_in_chunk + 1;
 
                         return Some(SimdToken {
                             token: token.into(),
-                            col: chunk_col + idx_in_chunk + idx_in_chunk - col_offset,
+                            col: 0,
                         });
                     }
                     token => Some(SimdToken {

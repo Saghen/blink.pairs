@@ -1,6 +1,6 @@
 use std::simd::Simd;
 
-pub type SimdVec = Simd<u8, 16>;
+pub type SimdVec = Simd<u8, 32>;
 
 pub mod parse;
 pub mod tokenize;
