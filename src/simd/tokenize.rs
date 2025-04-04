@@ -105,54 +105,33 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
         .chunks(SimdVec::LEN)
         .map(SimdVec::load_or_default)
         .enumerate()
-        .map(move |(idx, chunk)| {
-            let mut tokens = none_token;
+        .flat_map(move |(idx, chunk)| {
+            let is_new_line = new_line.simd_eq(chunk);
+            let is_escape = escape.simd_eq(chunk);
+            let is_curly_brace_open = curly_brace_open.simd_eq(chunk);
+            let is_curly_brace_close = curly_brace_close.simd_eq(chunk);
+            let is_square_bracket_open = square_bracket_open.simd_eq(chunk);
+            let is_square_bracket_close = square_bracket_close.simd_eq(chunk);
+            let is_round_bracket_open = round_bracket_open.simd_eq(chunk);
+            let is_round_bracket_close = round_bracket_close.simd_eq(chunk);
+            let is_single_quote = single_quote.simd_eq(chunk);
+            let is_double_quote = double_quote.simd_eq(chunk);
+            let is_forward_slash = forward_slash.simd_eq(chunk);
+            let is_star = star.simd_eq(chunk);
 
-            tokens = tokens | new_line.simd_eq(chunk).select(new_line_token, tokens);
-            tokens = tokens | escape.simd_eq(chunk).select(escape_token, tokens);
-
-            tokens = tokens
-                | curly_brace_open
-                    .simd_eq(chunk)
-                    .select(curly_brace_open_token, tokens);
-            tokens = tokens
-                | curly_brace_close
-                    .simd_eq(chunk)
-                    .select(curly_brace_close_token, tokens);
-
-            tokens = tokens
-                | square_bracket_open
-                    .simd_eq(chunk)
-                    .select(square_bracket_open_token, tokens);
-            tokens = tokens
-                | square_bracket_close
-                    .simd_eq(chunk)
-                    .select(square_bracket_close_token, tokens);
-
-            tokens = tokens
-                | round_bracket_open
-                    .simd_eq(chunk)
-                    .select(round_bracket_open_token, tokens);
-            tokens = tokens
-                | round_bracket_close
-                    .simd_eq(chunk)
-                    .select(round_bracket_close_token, tokens);
-
-            tokens = tokens
-                | single_quote
-                    .simd_eq(chunk)
-                    .select(single_quote_token, tokens);
-            tokens = tokens
-                | double_quote
-                    .simd_eq(chunk)
-                    .select(double_quote_token, tokens);
-
-            tokens = tokens
-                | forward_slash
-                    .simd_eq(chunk)
-                    .select(forward_slash_token, tokens);
-
-            tokens = tokens | star.simd_eq(chunk).select(star_token, tokens);
+            let tokens = none_token
+                | is_new_line.select(new_line_token, none_token)
+                | is_escape.select(escape_token, none_token)
+                | is_curly_brace_open.select(curly_brace_open_token, none_token)
+                | is_curly_brace_close.select(curly_brace_close_token, none_token)
+                | is_square_bracket_open.select(square_bracket_open_token, none_token)
+                | is_square_bracket_close.select(square_bracket_close_token, none_token)
+                | is_round_bracket_open.select(round_bracket_open_token, none_token)
+                | is_round_bracket_close.select(round_bracket_close_token, none_token)
+                | is_single_quote.select(single_quote_token, none_token)
+                | is_double_quote.select(double_quote_token, none_token)
+                | is_forward_slash.select(forward_slash_token, none_token)
+                | is_star.select(star_token, none_token);
 
             // Apply parsed tokens
             let chunk_col = idx * SimdVec::LEN;
@@ -160,7 +139,7 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
                 .to_array()
                 .into_iter()
                 .enumerate()
-                .map(move |(idx_in_chunk, token)| match token.into() {
+                .flat_map(move |(idx_in_chunk, token)| match token.into() {
                     SimdTokenType::None => None,
                     SimdTokenType::NewLine => {
                         col_offset += idx_in_chunk + 1;
@@ -175,7 +154,5 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
                         col: chunk_col + idx_in_chunk - col_offset,
                     }),
                 })
-                .flatten()
         })
-        .flatten()
 }
