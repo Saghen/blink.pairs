@@ -28,6 +28,12 @@ pub enum SimdTokenType {
 
     ForwardSlash = 12,
     Star = 13,
+    Dash = 14,
+    Dollar = 15,
+    At = 16,
+    Percent = 17,
+    Hash = 18,
+    Semicolon = 19,
 }
 
 impl From<SimdTokenType> for u8 {
@@ -53,6 +59,12 @@ impl From<u8> for SimdTokenType {
             11 => SimdTokenType::BackTick,
             12 => SimdTokenType::ForwardSlash,
             13 => SimdTokenType::Star,
+            14 => SimdTokenType::Dash,
+            15 => SimdTokenType::Dollar,
+            16 => SimdTokenType::At,
+            17 => SimdTokenType::Percent,
+            18 => SimdTokenType::Hash,
+            19 => SimdTokenType::Semicolon,
             _ => panic!("Invalid token value: {}", val),
         }
     }
@@ -92,11 +104,32 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
     let double_quote_token = SimdVec::splat(SimdTokenType::DoubleQuote.into());
     let double_quote = SimdVec::splat(b'"');
 
+    let backtick_token = SimdVec::splat(SimdTokenType::BackTick.into());
+    let backtick = SimdVec::splat(b'`');
+
     let forward_slash_token = SimdVec::splat(SimdTokenType::ForwardSlash.into());
     let forward_slash = SimdVec::splat(b'/');
 
     let star_token = SimdVec::splat(SimdTokenType::Star.into());
     let star = SimdVec::splat(b'*');
+
+    let dash_token = SimdVec::splat(SimdTokenType::Dash.into());
+    let dash = SimdVec::splat(b'-');
+
+    let dollar_token = SimdVec::splat(SimdTokenType::Dollar.into());
+    let dollar = SimdVec::splat(b'$');
+
+    let at_token = SimdVec::splat(SimdTokenType::At.into());
+    let at = SimdVec::splat(b'@');
+
+    let percent_token = SimdVec::splat(SimdTokenType::Percent.into());
+    let percent = SimdVec::splat(b'%');
+
+    let hash_token = SimdVec::splat(SimdTokenType::Hash.into());
+    let hash = SimdVec::splat(b'#');
+
+    let semicolon_token = SimdVec::splat(SimdTokenType::Semicolon.into());
+    let semicolon = SimdVec::splat(b';');
 
     //
 
@@ -116,8 +149,15 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
             let is_round_bracket_close = round_bracket_close.simd_eq(chunk);
             let is_single_quote = single_quote.simd_eq(chunk);
             let is_double_quote = double_quote.simd_eq(chunk);
+            let is_backtick = backtick.simd_eq(chunk);
             let is_forward_slash = forward_slash.simd_eq(chunk);
             let is_star = star.simd_eq(chunk);
+            let is_dash = dash.simd_eq(chunk);
+            let is_dollar = dollar.simd_eq(chunk);
+            let is_at = at.simd_eq(chunk);
+            let is_percent = percent.simd_eq(chunk);
+            let is_hash = hash.simd_eq(chunk);
+            let is_semicolon = semicolon.simd_eq(chunk);
 
             let tokens = none_token
                 | is_new_line.select(new_line_token, none_token)
@@ -130,8 +170,15 @@ pub fn tokenize(text: &str) -> impl Iterator<Item = SimdToken> + '_ {
                 | is_round_bracket_close.select(round_bracket_close_token, none_token)
                 | is_single_quote.select(single_quote_token, none_token)
                 | is_double_quote.select(double_quote_token, none_token)
+                | is_backtick.select(backtick_token, none_token)
                 | is_forward_slash.select(forward_slash_token, none_token)
-                | is_star.select(star_token, none_token);
+                | is_star.select(star_token, none_token)
+                | is_dash.select(dash_token, none_token)
+                | is_dollar.select(dollar_token, none_token)
+                | is_at.select(at_token, none_token)
+                | is_percent.select(percent_token, none_token)
+                | is_hash.select(hash_token, none_token)
+                | is_semicolon.select(semicolon_token, none_token);
 
             // Apply parsed tokens
             let chunk_col = idx * SimdVec::LEN;
