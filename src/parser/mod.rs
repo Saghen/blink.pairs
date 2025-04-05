@@ -34,6 +34,7 @@ pub fn parse_filetype(
         "latex" => Some(parse(lines, initial_state, languages::Latex {})),
         "lean" => Some(parse(lines, initial_state, languages::Lean {})),
         "lua" => Some(parse(lines, initial_state, languages::Lua {})),
+        "markdown" => Some(parse(lines, initial_state, languages::Markdown {})),
         "objc" => Some(parse(lines, initial_state, languages::ObjC {})),
         "ocaml" => Some(parse(lines, initial_state, languages::OCaml {})),
         "perl" => Some(parse(lines, initial_state, languages::Perl {})),

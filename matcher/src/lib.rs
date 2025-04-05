@@ -93,7 +93,32 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(close_arm.build());
     }
 
-    // 3. Line comment patterns
+    // 3. Block span patterns
+    for (name, (open, close)) in &def.block_spans {
+        let arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
+            matches.push(Match::new(Kind::Opening, Token::BlockSpan(#name, #open, #close), token.col));
+            // Skip tokens based on length of pattern
+            for _ in 1..#open.len() {
+                tokens.next();
+            }
+            State::InBlockSpan(#name)
+        });
+        match_arms.push(arm.build());
+
+        let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
+            .input_state(quote! { State::InBlockSpan(#name) })
+            .body(quote! {
+                matches.push(Match::new(Kind::Closing, Token::BlockSpan(#name, #open, #close), token.col));
+                // Skip tokens based on length of pattern
+                for _ in 1..#close.len() {
+                    tokens.next();
+                }
+                State::Normal
+            });
+        match_arms.push(close_arm.build());
+    }
+
+    // 4. Line comment patterns
     for comment in &def.line_comments {
         let arm = MatchArm::builder(comment.to_string(), max_lookahead).body(quote! {
             matches.push(Match::line_comment(#comment, token.col));
@@ -107,7 +132,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(arm.build());
     }
 
-    // 4. String patterns
+    // 5. String patterns
     for delim in &def.strings {
         // Opening string
         let open_arm = MatchArm::builder(delim.to_string(), max_lookahead).body(quote! {
@@ -137,7 +162,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(close_arm.build());
     }
 
-    // 5. Character literal patterns
+    // 6. Character literal patterns
     for delim in &def.chars {
         // TODO: handle escaped
         let delim_byte = delim.as_bytes()[0];
@@ -165,7 +190,32 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(arm.build());
     }
 
-    // 6. Delimiter patterns
+    // 7. Inline span patterns
+    for (name, (open, close)) in &def.inline_spans {
+        let arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
+            matches.push(Match::new(Kind::Opening, Token::InlineSpan(#name, #open, #close), token.col));
+            // Skip tokens based on length of pattern
+            for _ in 1..#open.len() {
+                tokens.next();
+            }
+            State::InInlineSpan(#name)
+        });
+        match_arms.push(arm.build());
+
+        let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
+            .input_state(quote! { State::InInlineSpan(#name) })
+            .body(quote! {
+                matches.push(Match::new(Kind::Closing, Token::InlineSpan(#name, #open, #close), token.col));
+                // Skip tokens based on length of pattern
+                for _ in 1..#close.len() {
+                    tokens.next();
+                }
+                State::Normal
+            });
+        match_arms.push(close_arm.build());
+    }
+
+    // 8. Delimiter patterns
     for (open, close) in &def.delimiters {
         let close_byte = close.as_bytes()[0];
 

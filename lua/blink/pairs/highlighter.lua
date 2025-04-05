@@ -7,7 +7,7 @@ function highlighter.register(config)
     on_line = function(_, _, bufnr, line_number)
       for _, match in ipairs(require('blink.pairs.rust').get_line_matches(bufnr, line_number)) do
         vim.api.nvim_buf_set_extmark(bufnr, config.ns, line_number, match.col, {
-          end_col = match.col + match[0]:len(),
+          end_col = match.col + match[1]:len(),
           hl_group = config.groups[match.stack_height % #config.groups + 1],
           hl_mode = 'combine',
           priority = config.priority,

@@ -3,7 +3,7 @@ use syn::token::{Colon, Comma, FatArrow};
 use syn::{braced, bracketed, Result};
 use syn::{Ident, LitStr};
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub struct MatcherDef {
     pub name: Ident,
@@ -13,6 +13,8 @@ pub struct MatcherDef {
     pub strings: Vec<String>,
     pub chars: Vec<String>,
     pub block_strings: Vec<(String, String)>,
+    pub inline_spans: HashMap<String, (String, String)>,
+    pub block_spans: HashMap<String, (String, String)>,
 }
 
 // Parse the incoming macro definition into a MatcherDef struct
@@ -28,6 +30,8 @@ impl Parse for MatcherDef {
         let mut strings = Vec::new();
         let mut chars = Vec::new();
         let mut block_strings = Vec::new();
+        let mut inline_spans = HashMap::new();
+        let mut block_spans = HashMap::new();
 
         fn get_single_char(token: LitStr) -> Result<String> {
             let value = token.value();
@@ -47,7 +51,16 @@ impl Parse for MatcherDef {
             content.parse::<Colon>()?;
 
             let section_content;
-            bracketed!(section_content in content);
+            match section_name.to_string().as_str() {
+                "delimiters" | "line_comment" | "block_comment" | "string" | "char"
+                | "block_string" => {
+                    bracketed!(section_content in content);
+                }
+                "inline_span" | "block_span" => {
+                    braced!(section_content in content);
+                }
+                _ => return Err(syn::Error::new(section_name.span(), "Unknown section name")),
+            }
 
             match section_name.to_string().as_str() {
                 "delimiters" => {
@@ -111,6 +124,34 @@ impl Parse for MatcherDef {
                         }
                     }
                 }
+                "inline_span" => {
+                    while !section_content.is_empty() {
+                        let name = section_content.parse::<Ident>()?.to_string();
+                        section_content.parse::<Colon>()?;
+                        let open = section_content.parse::<LitStr>()?.value();
+                        section_content.parse::<FatArrow>()?;
+                        let close = section_content.parse::<LitStr>()?.value();
+                        inline_spans.insert(name, (open, close));
+
+                        if !section_content.is_empty() {
+                            section_content.parse::<Comma>()?;
+                        }
+                    }
+                }
+                "block_span" => {
+                    while !section_content.is_empty() {
+                        let name = section_content.parse::<Ident>()?.to_string();
+                        section_content.parse::<Colon>()?;
+                        let open = section_content.parse::<LitStr>()?.value();
+                        section_content.parse::<FatArrow>()?;
+                        let close = section_content.parse::<LitStr>()?.value();
+                        block_spans.insert(name, (open, close));
+
+                        if !section_content.is_empty() {
+                            section_content.parse::<Comma>()?;
+                        }
+                    }
+                }
                 _ => return Err(syn::Error::new(section_name.span(), "Unknown section name")),
             }
 
@@ -127,6 +168,8 @@ impl Parse for MatcherDef {
             strings,
             chars,
             block_strings,
+            inline_spans,
+            block_spans,
         })
     }
 }
@@ -177,6 +220,24 @@ pub fn collect_tokens(def: &MatcherDef) -> Vec<u8> {
 
     for s in &def.chars {
         for c in s.bytes() {
+            all_tokens.insert(c);
+        }
+    }
+
+    for (open, close) in def.inline_spans.values() {
+        for c in open.bytes() {
+            all_tokens.insert(c);
+        }
+        for c in close.bytes() {
+            all_tokens.insert(c);
+        }
+    }
+
+    for (open, close) in def.block_spans.values() {
+        for c in open.bytes() {
+            all_tokens.insert(c);
+        }
+        for c in close.bytes() {
             all_tokens.insert(c);
         }
     }

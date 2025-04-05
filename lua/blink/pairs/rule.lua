@@ -25,6 +25,17 @@ local function as_func(val, default)
   return function() return val end
 end
 
+--- Helper function to safely check if we're inside a specific span type
+--- @param span_name string The name of the span to check for (e.g., "math")
+--- @return boolean Whether we're currently inside the specified span
+function M.is_in_span(span_name)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+
+  local span_at = require('blink.pairs.rust').get_span_at(bufnr, cursor[1] - 1, cursor[2])
+  return span_at == span_name
+end
+
 --- Takes a table of user friendly rule definitions and converts it to a table of rules
 --- @param definitions blink.pairs.RuleDefinitions
 --- @return blink.pairs.RulesByKey
@@ -142,7 +153,7 @@ end
 --- @param rules blink.pairs.Rule[] Must be sorted by priority
 --- @param mode? blink.pairs.Mode
 --- @return blink.pairs.Rule? rule Rule surrounding the cursor
---- @return boolean surrounding_space Whether there's a single space on either side of the cursor
+--- @return boolean? surrounding_space Whether there's a single space on either side of the cursor
 function M.get_surrounding(rules, mode)
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line()

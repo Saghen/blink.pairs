@@ -127,10 +127,17 @@ impl IntoLua for Match {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
         let table = lua.create_table()?;
 
-        table.set(0, self.token.opening())?;
+        table.set(1, self.token.opening())?;
         if let Some(closing) = self.token.closing() {
-            table.set(1, closing)?;
+            table.set(2, closing)?;
         }
+        match self.token {
+            Token::InlineSpan(span, _, _) | Token::BlockSpan(span, _, _) => {
+                table.set("span", span)?;
+            }
+            _ => {}
+        }
+
         table.set("col", self.col)?;
         table.set("stack_height", self.stack_height)?;
 
@@ -155,6 +162,13 @@ impl IntoLua for MatchWithLine {
         if let Some(closing) = self.token.closing() {
             table.set(2, closing)?;
         }
+        match self.token {
+            Token::InlineSpan(span, _, _) | Token::BlockSpan(span, _, _) => {
+                table.set("span", span)?;
+            }
+            _ => {}
+        }
+
         table.set("line", self.line)?;
         table.set("col", self.col)?;
         table.set("stack_height", self.stack_height)?;

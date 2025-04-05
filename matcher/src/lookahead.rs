@@ -37,6 +37,16 @@ pub fn calculate_max_lookahead(def: &MatcherDef) -> usize {
         max_len = max_len.max(close.len());
     }
 
+    for (open, close) in def.inline_spans.values() {
+        max_len = max_len.max(open.len());
+        max_len = max_len.max(close.len());
+    }
+
+    for (open, close) in def.block_spans.values() {
+        max_len = max_len.max(open.len());
+        max_len = max_len.max(close.len());
+    }
+
     // Already have the first byte, so subtract 1
     max_len.saturating_sub(1)
 }

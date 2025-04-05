@@ -84,6 +84,12 @@ fn get_line_matches(
     Ok(Vec::new())
 }
 
+fn get_span_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<String>> {
+    Ok(get_parsed_buffers()
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.span_at(row, col)))
+}
+
 fn get_match_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<Match>> {
     Ok(get_parsed_buffers()
         .get(&bufnr)
@@ -107,6 +113,7 @@ fn blink_pairs(lua: &Lua) -> LuaResult<LuaTable> {
     let exports = lua.create_table()?;
     exports.set("parse_buffer", lua.create_function(parse_buffer)?)?;
     exports.set("get_line_matches", lua.create_function(get_line_matches)?)?;
+    exports.set("get_span_at", lua.create_function(get_span_at)?)?;
     exports.set("get_match_at", lua.create_function(get_match_at)?)?;
     exports.set("get_match_pair", lua.create_function(get_match_pair)?)?;
     Ok(exports)

@@ -62,6 +62,20 @@ local mappings = {
         },
         { '`', enter = false, space = false },
       },
+      ['_'] = {
+        {
+          '_',
+          when = function()
+            local rule = require('blink.pairs.rule')
+            local in_math = rule.is_in_span('math')
+
+            if in_math then return false end
+
+            return true
+          end,
+          filetypes = { 'markdown', 'typst' },
+        },
+      },
     },
   },
 }

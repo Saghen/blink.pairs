@@ -16,6 +16,9 @@ pub enum Token {
 
     LineComment(&'static str),
     BlockComment(&'static str, &'static str),
+
+    InlineSpan(&'static str, &'static str, &'static str),
+    BlockSpan(&'static str, &'static str, &'static str),
 }
 
 impl Token {
@@ -26,6 +29,8 @@ impl Token {
             Token::BlockString(open, _) => *open,
             Token::LineComment(open) => *open,
             Token::BlockComment(open, _) => *open,
+            Token::InlineSpan(_, open, _) => *open,
+            Token::BlockSpan(_, open, _) => *open,
         }
     }
 
@@ -36,6 +41,8 @@ impl Token {
             Token::BlockString(_, close) => Some(*close),
             Token::LineComment(_) => None,
             Token::BlockComment(_, close) => Some(*close),
+            Token::InlineSpan(_, _, close) => Some(*close),
+            Token::BlockSpan(_, _, close) => Some(*close),
         }
     }
 }

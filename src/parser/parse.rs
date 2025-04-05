@@ -12,6 +12,8 @@ pub enum State {
     InBlockString(&'static str),
     InLineComment,
     InBlockComment(&'static str),
+    InInlineSpan(&'static str),
+    InBlockSpan(&'static str),
 }
 
 /// Given a matcher, runs the tokenizer on the lines and keeps track
@@ -52,7 +54,10 @@ where
             line_matches = vec![];
             escaped_col = None;
 
-            if matches!(state, State::InString(_) | State::InLineComment) {
+            if matches!(
+                state,
+                State::InString(_) | State::InLineComment | State::InInlineSpan(_)
+            ) {
                 state = State::Normal;
             }
             state_by_line.push(state);

@@ -1,4 +1,4 @@
-use crate::parser::{parse_filetype, Kind, Match, MatchWithLine, State};
+use crate::parser::{parse_filetype, Kind, Match, MatchWithLine, State, Token};
 
 pub struct ParsedBuffer {
     matches_by_line: Vec<Vec<Match>>,
@@ -58,6 +58,51 @@ impl ParsedBuffer {
 
     pub fn line_matches(&self, line_number: usize) -> Option<Vec<Match>> {
         self.matches_by_line.get(line_number).cloned()
+    }
+
+    pub fn span_at(&self, line_number: usize, col: usize) -> Option<String> {
+        let line_matches = self.matches_by_line.get(line_number)?;
+        let line_state = self.state_by_line.get(line_number)?;
+
+        // Look for spans starting in the current line before the desired column
+
+        let matching_span = line_matches
+            .iter()
+            .rev()
+            // Get all opening matches before the cursor on the current line
+            .filter(|match_| match_.kind == Kind::Opening && match_.col <= col)
+            // Find closing match on the same line or no match (overflows to next line)
+            .find_map(|opening| {
+                match opening.token {
+                    Token::InlineSpan(span, _, _) | Token::BlockSpan(span, _, _) => {
+                        let closing = line_matches.iter().find(|closing| {
+                            closing.kind == Kind::Closing
+                                && closing.col > opening.col
+                                && closing.token == opening.token
+                                && closing.stack_height == opening.stack_height
+                        });
+
+                        match closing {
+                            // Ends before desired column
+                            Some(closing) if closing.col < col => None,
+                            // Extends to end of line or found closing after desired column
+                            _ => Some(span),
+                        }
+                    }
+                    _ => None,
+                }
+            });
+
+        if let Some(span) = matching_span {
+            return Some(span.to_string());
+        }
+
+        // Look for spans that started before the current line
+        match line_state {
+            // TODO: check that the span doesn't end before the cursor
+            State::InInlineSpan(span) | State::InBlockSpan(span) => Some(span.to_string()),
+            _ => None,
+        }
     }
 
     pub fn match_at(&self, line_number: usize, col: usize) -> Option<Match> {
@@ -139,5 +184,9 @@ impl ParsedBuffer {
                 }
             }
         }
+    }
+
+    pub fn get_state_at_line(&self, line_number: usize) -> Option<&State> {
+        self.state_by_line.get(line_number)
     }
 }
