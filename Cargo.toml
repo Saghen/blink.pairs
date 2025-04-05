@@ -12,6 +12,7 @@ name = "lib"
 harness = false
 
 [dependencies]
+itertools = "0.14.0"
 logos = "0.15.0"
 mlua = { version = "0.10.2", features = ["module", "luajit", "serialize"] }
 serde = { version = "1.0.219", features = ["derive"] }

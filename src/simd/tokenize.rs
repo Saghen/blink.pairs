@@ -1,11 +1,21 @@
 use std::simd::cmp::SimdPartialEq;
 
-use super::SimdVec;
+use super::{parse::SimdMatch, SimdVec};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SimdToken {
     pub token: SimdTokenType,
     pub col: usize,
+}
+
+impl SimdToken {
+    pub fn into_match(self, stack_height: Option<usize>) -> SimdMatch {
+        SimdMatch {
+            token: self.token.into(),
+            col: self.col,
+            stack_height,
+        }
+    }
 }
 
 #[repr(u8)]
