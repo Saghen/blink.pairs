@@ -1,7 +1,7 @@
 use crate::simd::*;
 use matcher_macros::define_matcher;
 
-define_matcher!(C {
+define_matcher!(CSharp {
     delimiters: [
         "(" => ")",
         "[" => "]",
@@ -11,5 +11,5 @@ define_matcher!(C {
     block_comment: ["/*" => "*/"],
     char: ["'"],
     string: ["\""],
-    block_string: []
+    block_string: ["@\"" => "\""]
 });

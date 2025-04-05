@@ -1,11 +1,12 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{format_ident, quote, ToTokens};
-use std::collections::HashSet;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::token::{Bracket, Colon, Comma, FatArrow};
+use syn::token::{Colon, Comma, FatArrow};
 use syn::{braced, bracketed, Result};
-use syn::{parse_macro_input, Ident, LitStr, Token};
+use syn::{parse_macro_input, Ident, LitStr};
+
+use std::collections::HashSet;
 
 struct MatcherDef {
     name: Ident,

@@ -32,6 +32,15 @@ impl Match {
             stack_height: None,
         }
     }
+
+    pub fn with_line(self, line: usize) -> MatchWithLine {
+        MatchWithLine {
+            token: self.token,
+            line,
+            col: self.col,
+            stack_height: self.stack_height,
+        }
+    }
 }
 
 impl From<TokenPos> for Match {
@@ -42,6 +51,14 @@ impl From<TokenPos> for Match {
             stack_height: None,
         }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MatchWithLine {
+    pub token: MatchToken,
+    pub line: usize,
+    pub col: usize,
+    pub stack_height: Option<usize>,
 }
 
 #[derive(Debug, PartialEq)]

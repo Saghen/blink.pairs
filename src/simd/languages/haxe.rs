@@ -1,7 +1,7 @@
 use crate::simd::*;
 use matcher_macros::define_matcher;
 
-define_matcher!(C {
+define_matcher!(Haxe {
     delimiters: [
         "(" => ")",
         "[" => "]",
@@ -10,6 +10,5 @@ define_matcher!(C {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     char: ["'"],
-    string: ["\""],
-    block_string: []
+    string: ["\""]
 });

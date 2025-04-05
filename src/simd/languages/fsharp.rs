@@ -1,15 +1,14 @@
 use crate::simd::*;
 use matcher_macros::define_matcher;
 
-define_matcher!(C {
+define_matcher!(FSharp {
     delimiters: [
         "(" => ")",
         "[" => "]",
         "{" => "}"
     ],
     line_comment: ["//"],
-    block_comment: ["/*" => "*/"],
-    char: ["'"],
+    block_comment: ["(*" => "*)"],
     string: ["\""],
-    block_string: []
+    block_string: ["\"\"\"" => "\"\"\""]
 });

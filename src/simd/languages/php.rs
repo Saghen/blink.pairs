@@ -1,15 +1,13 @@
 use crate::simd::*;
 use matcher_macros::define_matcher;
 
-define_matcher!(C {
+define_matcher!(Php {
     delimiters: [
         "(" => ")",
         "[" => "]",
         "{" => "}"
     ],
-    line_comment: ["//"],
+    line_comment: ["//", "#"],
     block_comment: ["/*" => "*/"],
-    char: ["'"],
-    string: ["\""],
-    block_string: []
+    string: ["\"", "'"]
 });
