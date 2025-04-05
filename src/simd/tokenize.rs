@@ -33,7 +33,7 @@ pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = TokenPos> +
         .flat_map(|c| {
             match c {
                 // Enabled by default, ignore
-                b'\n' | b'\\' => None,
+                0 | b'\n' | b'\\' => None,
 
                 _ => Some(SimdVec::splat(c)),
             }
