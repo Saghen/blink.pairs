@@ -9,5 +9,7 @@ define_token_enum!(OCamlToken, ocaml_tokens, {
     line_comment: [],
     block_comment: ["(*" => "*)"],
     string_regex: ["(?&dstring)"],
-    block_string: []
+    block_string: [],
+    inline_span: [],
+    block_span: []
 });

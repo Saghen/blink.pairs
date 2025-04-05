@@ -9,5 +9,7 @@ define_token_enum!(SwiftToken, swift_tokens, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string_regex: ["(?&dstring)", "(?&sstring)"],
-    block_string: [symmetric "\"\"\""]
+    block_string: [symmetric "\"\"\""],
+    inline_span: [],
+    block_span: []
 });

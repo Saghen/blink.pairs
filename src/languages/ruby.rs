@@ -9,5 +9,7 @@ define_token_enum!(RubyToken, ruby_tokens, {
     line_comment: ["#"],
     block_comment: ["=begin" => "end"],
     string_regex: ["(?&dstring)", "(?&sstring)"],
-    block_string: []
+    block_string: [],
+    inline_span: [],
+    block_span: []
 });

@@ -1,3 +1,4 @@
+use crate::languages::TokenType;
 use crate::parser::{parse_filetype, Match, MatchWithLine, ParseState};
 
 pub struct ParsedBuffer {
@@ -61,11 +62,58 @@ impl ParsedBuffer {
     }
 
     pub fn match_at(&self, line_number: usize, col: usize) -> Option<Match> {
-        self.matches_by_line
-            .get(line_number)?
+        let line_matches = self.matches_by_line.get(line_number)?;
+
+        let exact_match = line_matches
             .iter()
             .find(|match_| (match_.col..(match_.col + match_.text.len())).contains(&col))
-            .cloned()
+            .cloned();
+
+        if exact_match.is_some() {
+            return exact_match;
+        }
+
+        let virtual_match = line_matches
+            .iter()
+            .find(|match_| {
+                match_.col == col && match_.text.is_empty() && match_.span_name.is_some()
+            })
+            .cloned();
+
+        if virtual_match.is_some() {
+            return virtual_match;
+        }
+
+        let block_span_marker = line_matches
+            .iter()
+            .find(|match_| {
+                match_.col == 0 && 
+                match_.text.is_empty() && 
+                match_.span_name.is_some() && 
+                match_.type_ == TokenType::BlockSpan
+            })
+            .cloned();
+
+        if block_span_marker.is_some() {
+            let mut marker = block_span_marker.unwrap();
+            marker.col = col;
+            return Some(marker);
+        }
+
+        if let Some(state) = self.state_by_line.get(line_number) {
+            if let ParseState::InBlockSpan { name, .. } = state {
+                return Some(Match {
+                    type_: TokenType::BlockSpan,
+                    text: "",
+                    col,
+                    closing: None,
+                    stack_height: None,
+                    span_name: Some(*name),
+                });
+            }
+        }
+
+        None
     }
 
     pub fn match_pair(
@@ -77,6 +125,8 @@ impl ParsedBuffer {
 
         // Opening match
         if match_at_pos.closing.is_some() {
+            // Find the closing match by searching forward
+            // For TokenType::InlineSpan or TokenType::BlockSpan, we need to find the matching one with same span_name
             let closing_match = self.matches_by_line[line_number..]
                 .iter()
                 .enumerate()
@@ -88,7 +138,8 @@ impl ParsedBuffer {
                             (line_number != matches_line_number || match_.col > col)
                                 && match_at_pos.type_ == match_.type_
                                 && match_at_pos.closing == Some(match_.text)
-                                && match_at_pos.stack_height == match_.stack_height
+                                && (match_at_pos.stack_height == match_.stack_height || 
+                                   (match_at_pos.span_name.is_some() && match_at_pos.span_name == match_.span_name))
                         })
                         .map(|match_| match_.with_line(matches_line_number))
                 })?;
@@ -97,6 +148,8 @@ impl ParsedBuffer {
         }
         // Closing match
         else {
+            // Find the opening match by searching backward
+            // For TokenType::InlineSpan or TokenType::BlockSpan, we need to find the matching one with same span_name
             let opening_match = self.matches_by_line[0..(line_number + 1)]
                 .iter()
                 .enumerate()
@@ -109,7 +162,8 @@ impl ParsedBuffer {
                             (line_number != matches_line_number || match_.col < col)
                                 && match_at_pos.type_ == match_.type_
                                 && Some(match_at_pos.text) == match_.closing
-                                && match_at_pos.stack_height == match_.stack_height
+                                && (match_at_pos.stack_height == match_.stack_height || 
+                                   (match_at_pos.span_name.is_some() && match_at_pos.span_name == match_.span_name))
                         })
                         .map(|match_| match_.with_line(matches_line_number))
                 })?;
@@ -141,5 +195,9 @@ impl ParsedBuffer {
                 }
             }
         }
+    }
+
+    pub fn get_state_at_line(&self, line_number: usize) -> Option<&ParseState> {
+        self.state_by_line.get(line_number)
     }
 }

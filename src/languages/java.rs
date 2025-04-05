@@ -9,5 +9,7 @@ define_token_enum!(JavaToken, java_tokens, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string_regex: ["(?&dstring)", "(?&schar)"],
-    block_string: [symmetric "\"\"\""]
+    block_string: [symmetric "\"\"\""],
+    inline_span: [],
+    block_span: []
 });

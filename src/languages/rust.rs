@@ -9,5 +9,7 @@ define_token_enum!(RustToken, rust_tokens, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string_regex: ["(?&dstring)", "(?&schar)"],
-    block_string: ["r#\"" => "\"#", "r##\"" => "##\"", "r###\"" => "###\""]
+    block_string: ["r#\"" => "\"#", "r##\"" => "##\"", "r###\"" => "###\""],
+    inline_span: [],
+    block_span: []
 });

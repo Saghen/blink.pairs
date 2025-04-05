@@ -4,7 +4,7 @@ use mlua::prelude::*;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use parser::{Match, MatchWithLine};
+use parser::{Match, MatchWithLine, ParseState};
 
 pub mod buffer;
 pub mod languages;
