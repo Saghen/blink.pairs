@@ -1,14 +1,14 @@
 use itertools::MultiPeek;
 
-use super::{State, Token, TokenPos};
+use super::{State, TokenPos};
 
 pub trait Matcher {
-    fn tokens(&self) -> Vec<Token>;
+    fn tokens(&self) -> Vec<u8>;
 
     fn call<I>(
         &mut self,
         matches: &mut Vec<Match>,
-        stack: &mut Vec<Token>,
+        stack: &mut Vec<u8>,
         tokens: &mut MultiPeek<I>,
         state: State,
         token: TokenPos,
@@ -37,7 +37,7 @@ impl Match {
 impl From<TokenPos> for Match {
     fn from(token: TokenPos) -> Self {
         Match {
-            token: token.token.into(),
+            token: token.byte.into(),
             col: token.col,
             stack_height: None,
         }
@@ -59,15 +59,15 @@ pub enum MatchToken {
     BlockCommentClose(&'static str, &'static str),
 }
 
-impl From<Token> for MatchToken {
-    fn from(token: Token) -> Self {
-        match token {
-            Token::CurlyBraceOpen => MatchToken::DelimiterOpen("{", "}"),
-            Token::CurlyBraceClose => MatchToken::DelimiterClose("{", "}"),
-            Token::SquareBracketOpen => MatchToken::DelimiterOpen("[", "]"),
-            Token::SquareBracketClose => MatchToken::DelimiterClose("[", "]"),
-            Token::ParenthesisOpen => MatchToken::DelimiterOpen("(", ")"),
-            Token::ParenthesisClose => MatchToken::DelimiterClose("(", ")"),
+impl From<u8> for MatchToken {
+    fn from(byte: u8) -> Self {
+        match byte {
+            b'{' => MatchToken::DelimiterOpen("{", "}"),
+            b'}' => MatchToken::DelimiterClose("{", "}"),
+            b'[' => MatchToken::DelimiterOpen("[", "]"),
+            b']' => MatchToken::DelimiterClose("[", "]"),
+            b'(' => MatchToken::DelimiterOpen("(", ")"),
+            b')' => MatchToken::DelimiterClose("(", ")"),
 
             _ => panic!("Invalid or ambiguous token type"),
         }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use super::{
     matcher::{Match, Matcher},
-    tokenize::{tokenize, Token},
+    tokenize::tokenize,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -34,7 +34,7 @@ where
 
     let mut tokens = tokenize(&text, matcher.tokens()).multipeek();
     while let Some(token) = tokens.next() {
-        if matches!(token.token, Token::NewLine) {
+        if matches!(token.byte, b'\n') {
             matches_by_line.push(line_matches);
             line_matches = vec![];
 
@@ -65,8 +65,16 @@ mod tests {
         assert_eq!(
             parse_language("c", &["{", "}"], State::Normal).unwrap().0,
             vec![
-                vec![Match::new(MatchToken::DelimiterOpen("{", "}"), 0)],
-                vec![Match::new(MatchToken::DelimiterClose("{", "}"), 0)]
+                vec![Match {
+                    token: MatchToken::DelimiterOpen("{", "}"),
+                    col: 0,
+                    stack_height: Some(0)
+                }],
+                vec![Match {
+                    token: MatchToken::DelimiterClose("{", "}"),
+                    col: 0,
+                    stack_height: Some(0)
+                }]
             ]
         );
 
@@ -76,7 +84,11 @@ mod tests {
                 .0,
             vec![
                 vec![Match::new(MatchToken::LineComment("//"), 0)],
-                vec![Match::new(MatchToken::DelimiterClose("{", "}"), 0)]
+                vec![Match {
+                    token: MatchToken::DelimiterClose("{", "}"),
+                    col: 0,
+                    stack_height: Some(0)
+                }],
             ]
         );
 
@@ -89,7 +101,11 @@ mod tests {
                     Match::new(MatchToken::BlockCommentOpen("/*", "*/"), 0),
                     Match::new(MatchToken::BlockCommentClose("/*", "*/"), 14)
                 ],
-                vec![Match::new(MatchToken::DelimiterClose("{", "}"), 0)]
+                vec![Match {
+                    token: MatchToken::DelimiterClose("{", "}"),
+                    col: 0,
+                    stack_height: Some(0)
+                }],
             ]
         );
     }

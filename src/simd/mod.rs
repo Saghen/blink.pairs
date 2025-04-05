@@ -7,9 +7,10 @@ pub mod matcher;
 pub mod parse;
 pub mod tokenize;
 
+pub use itertools::MultiPeek;
 pub use matcher::{Match, MatchToken, Matcher};
 pub use parse::{parse, State};
-pub use tokenize::{tokenize, Token, TokenPos};
+pub use tokenize::{tokenize, TokenPos};
 
 pub fn parse_language(
     language: &str,

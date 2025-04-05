@@ -48,6 +48,7 @@ dependencies = [
  "criterion",
  "itertools 0.14.0",
  "logos",
+ "matcher-macros",
  "mlua",
  "serde",
 ]
@@ -351,6 +352,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebfe8e1a19049ddbfccbd14ac834b215e11b85b90bab0c2dba7c7b92fb5d5cba"
 dependencies = [
  "logos-codegen",
+]
+
+[[package]]
+name = "matcher-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
