@@ -1,13 +1,12 @@
 use blink_pairs::parser::{parse_filetype, ParseState};
 use blink_pairs::simd;
-use blink_pairs::simd::languages::c_matcher;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("parse simd - c", |b| {
         let text = include_str!("./languages/c.c");
         let lines = text.lines().collect::<Vec<_>>();
-        b.iter(|| simd::parse(black_box(&lines), simd::parse::State::Normal, c_matcher))
+        b.iter(|| simd::parse_language("c", black_box(&lines), simd::parse::State::Normal))
     });
 
     c.bench_function("parse - c", |b| {

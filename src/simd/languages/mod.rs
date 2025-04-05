@@ -1,6 +1,6 @@
-pub mod c;
+mod c;
 
-pub use c::c_matcher;
+pub use c::*;
 
 // macro_rules! delimiters {}
 // macro_rules! line_comments {}
