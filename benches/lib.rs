@@ -15,6 +15,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| parse_filetype("c", black_box(&lines), ParseState::Normal))
     });
 
+    c.bench_function("parse simd - rust", |b| {
+        let text = include_str!("./languages/rust.rs");
+        let lines = text.lines().collect::<Vec<_>>();
+        b.iter(|| simd::parse_filetype("rust", black_box(&lines), simd::State::Normal))
+    });
+
     c.bench_function("parse - rust", |b| {
         let text = include_str!("./languages/rust.rs");
         let lines = text.lines().collect::<Vec<_>>();
