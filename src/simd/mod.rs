@@ -12,13 +12,14 @@ pub use matcher::{Match, MatchToken, Matcher};
 pub use parse::{parse, State};
 pub use tokenize::{tokenize, TokenPos};
 
-pub fn parse_language(
-    language: &str,
+pub fn parse_filetype(
+    filetype: &str,
     lines: &[&str],
     initial_state: State,
 ) -> Option<(Vec<Vec<Match>>, Vec<State>)> {
-    match language {
+    match filetype {
         "c" => Some(parse(lines, initial_state, languages::C {})),
+        "rust" => Some(parse(lines, initial_state, languages::Rust {})),
         _ => None,
     }
 }

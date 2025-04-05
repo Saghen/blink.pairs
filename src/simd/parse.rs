@@ -55,7 +55,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::simd::parse_language;
+    use crate::simd::parse_filetype;
 
     use super::*;
     use crate::simd::MatchToken;
@@ -63,7 +63,7 @@ mod tests {
     #[test]
     fn test_parse() {
         assert_eq!(
-            parse_language("c", &["{", "}"], State::Normal).unwrap().0,
+            parse_filetype("c", &["{", "}"], State::Normal).unwrap().0,
             vec![
                 vec![Match {
                     token: MatchToken::DelimiterOpen("{", "}"),
@@ -79,7 +79,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_language("c", &["// comment {}", "}"], State::Normal)
+            parse_filetype("c", &["// comment {}", "}"], State::Normal)
                 .unwrap()
                 .0,
             vec![
@@ -93,7 +93,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_language("c", &["/* comment {} */", "}"], State::Normal)
+            parse_filetype("c", &["/* comment {} */", "}"], State::Normal)
                 .unwrap()
                 .0,
             vec![

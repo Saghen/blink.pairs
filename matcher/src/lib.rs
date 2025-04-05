@@ -14,7 +14,7 @@ struct MatcherDef {
     block_comments: Vec<(String, String)>,
     strings: Vec<String>,
     chars: Vec<String>,
-    block_strings: Vec<String>,
+    block_strings: Vec<(String, String)>,
 }
 
 // Parse the incoming macro definition into a MatcherDef struct
@@ -90,7 +90,11 @@ impl Parse for MatcherDef {
                 }
                 "block_string" => {
                     while !section_content.is_empty() {
-                        block_strings.push(section_content.parse::<LitStr>()?.value());
+                        let open = section_content.parse::<LitStr>()?.value();
+                        section_content.parse::<FatArrow>()?;
+                        let close = section_content.parse::<LitStr>()?.value();
+                        block_strings.push((open, close));
+
                         if !section_content.is_empty() {
                             section_content.parse::<Comma>()?;
                         }
@@ -145,8 +149,9 @@ fn calculate_max_lookahead(def: &MatcherDef) -> usize {
         max_len = max_len.max(s.len() + 2);
     }
 
-    for s in &def.block_strings {
-        max_len = max_len.max(s.len());
+    for (open, close) in &def.block_strings {
+        max_len = max_len.max(open.len());
+        max_len = max_len.max(close.len());
     }
 
     // Already have the first byte, so subtract 1
@@ -371,7 +376,6 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
     // 2. Line comment patterns
     for comment in &def.line_comments {
-        // TODO: ensure adjacent tokens
         let arm = create_match_arm(
             max_lookahead,
             quote! { State::Normal },
@@ -388,7 +392,6 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
     // 3. Block comment patterns
     for (open, close) in &def.block_comments {
-        // TODO: ensure adjacent tokens
         let open_arm = create_match_arm(
             max_lookahead,
             quote! { State::Normal },
@@ -470,6 +473,41 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             },
         );
         match_arms.push(arm);
+    }
+
+    // 6. Block string patterns
+    for (open, close) in &def.block_strings {
+        let open_arm = create_match_arm(
+            max_lookahead,
+            quote! { State::Normal },
+            open,
+            generate_if_adjacent(open.len() - 1),
+            quote! {
+                matches.push(Match::new(
+                    MatchToken::BlockStringOpen(#open, #close),
+                    token.col,
+                ));
+                tokens.next(); // Skip next token
+                State::InBlockString(#open)
+            },
+        );
+        match_arms.push(open_arm);
+
+        let close_arm = create_match_arm(
+            max_lookahead,
+            quote! { State::InBlockString(#open) },
+            close,
+            generate_if_adjacent(close.len() - 1),
+            quote! {
+                matches.push(Match::new(
+                    MatchToken::BlockStringClose(#open, #close),
+                    token.col,
+                ));
+                tokens.next(); // Skip next token
+                State::Normal
+            },
+        );
+        match_arms.push(close_arm);
     }
 
     // Add fallback pattern

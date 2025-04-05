@@ -6,7 +6,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("parse simd - c", |b| {
         let text = include_str!("./languages/c.c");
         let lines = text.lines().collect::<Vec<_>>();
-        b.iter(|| simd::parse_language("c", black_box(&lines), simd::parse::State::Normal))
+        b.iter(|| simd::parse_filetype("c", black_box(&lines), simd::State::Normal))
     });
 
     c.bench_function("parse - c", |b| {
