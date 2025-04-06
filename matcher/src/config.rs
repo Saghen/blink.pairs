@@ -29,6 +29,18 @@ impl Parse for MatcherDef {
         let mut chars = Vec::new();
         let mut block_strings = Vec::new();
 
+        fn get_single_char(token: LitStr) -> Result<String> {
+            let value = token.value();
+            if value.len() != 1 {
+                Err(syn::Error::new(
+                    token.span(),
+                    "Delimiter must be a single character",
+                ))
+            } else {
+                Ok(value)
+            }
+        }
+
         // Parse each section
         while !content.is_empty() {
             let section_name = content.parse::<Ident>()?;
@@ -40,11 +52,9 @@ impl Parse for MatcherDef {
             match section_name.to_string().as_str() {
                 "delimiters" => {
                     while !section_content.is_empty() {
-                        let open = section_content.parse::<LitStr>()?.value();
-                        assert_eq!(open.len(), 1, "Delimiter must be a single character");
+                        let open = get_single_char(section_content.parse::<LitStr>()?)?;
                         section_content.parse::<FatArrow>()?;
-                        let close = section_content.parse::<LitStr>()?.value();
-                        assert_eq!(close.len(), 1, "Delimiter must be a single character");
+                        let close = get_single_char(section_content.parse::<LitStr>()?)?;
                         delimiters.push((open, close));
 
                         if !section_content.is_empty() {
@@ -82,8 +92,7 @@ impl Parse for MatcherDef {
                 }
                 "char" => {
                     while !section_content.is_empty() {
-                        let delim = section_content.parse::<LitStr>()?.value();
-                        assert_eq!(delim.len(), 1, "Delimiter must be a single character");
+                        let delim = get_single_char(section_content.parse::<LitStr>()?)?;
                         chars.push(delim);
                         if !section_content.is_empty() {
                             section_content.parse::<Comma>()?;
