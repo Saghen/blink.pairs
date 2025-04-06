@@ -125,6 +125,7 @@ pub enum TokenType {
 impl TryFrom<u8> for TokenType {
     type Error = ();
 
+    #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(TokenType::Delimiter),
@@ -139,10 +140,10 @@ impl TryFrom<u8> for TokenType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AvailableToken {
-    type_: TokenType,
-    opening: String,
-    closing: String,
-    name: Option<String>,
+    pub type_: TokenType,
+    pub opening: String,
+    pub closing: String,
+    pub name: Option<String>,
 }
 
 impl IntoLua for AvailableToken {
@@ -151,13 +152,10 @@ impl IntoLua for AvailableToken {
     }
 }
 
-// static string newtype - needed because logos callbacks can't directly return `&'static str`
-struct SStr(&'static str);
+pub struct SStr(&'static str);
 
-// TODO: Is there a better way to handle the RustToken and rust_tokens identifiers?
 #[macro_export]
 macro_rules! define_token_enum {
-    // New format with inline_span and block_span sections
     ($name:ident, $get_tokens:ident, {
         delimiters: { $($open:literal => $close:literal),* $(,)? },
         line_comment: [ $($line_comment:literal),* $(,)? ],
@@ -176,12 +174,12 @@ macro_rules! define_token_enum {
             $($block_span_open:literal => $block_span_close:literal => $block_span_open_name:literal),* $(,)?
         ]
     }) => {
-        #[allow(unused, private_interfaces)] // Ignore warnings about unused variants and SStr interface leakage
+        #[allow(unused, private_interfaces)] 
         #[derive(logos::Logos)]
-        #[logos(skip r"[ \t\f]+")] // Skip whitespace
-        #[logos(subpattern dstring = r#""([^"\\]|\\.)*""#)] // " string
-        #[logos(subpattern sstring = r#"'([^'\\]|\\.)*'"#)] // ' string
-        #[logos(subpattern schar = r#"'([^'\\]|\\.)'"#)] // ' char (single-character)
+        #[logos(skip r"[ \t\f]+")] 
+        #[logos(subpattern dstring = r#""([^"\\]|\\.)*""#)] 
+        #[logos(subpattern sstring = r#"'([^'\\]|\\.)*'"#)] 
+        #[logos(subpattern schar = r#"'([^'\\]|\\.)'"#)] 
         pub enum $name {
             $(#[token($open, |_|  {($crate::languages::SStr($open), $crate::languages::SStr($close))} )])*
             DelimiterOpen(($crate::languages::SStr, $crate::languages::SStr)),
@@ -229,6 +227,7 @@ macro_rules! define_token_enum {
         }
 
         impl From<$name> for $crate::languages::Token {
+            #[inline]
             fn from(value: $name) -> Self {
                 match value {
                     $name::DelimiterOpen((text, closing)) => Self::DelimiterOpen { text: text.0, closing: closing.0 },
@@ -251,11 +250,9 @@ macro_rules! define_token_enum {
             }
         }
 
-        /// Returns the available tokens (with opening and closing text) for the given filetype.
         pub fn $get_tokens() -> Vec<$crate::languages::AvailableToken> {
-            let mut tokens = Vec::new();
+            let mut tokens = Vec::with_capacity(32);
 
-            // For delimiter pairs.
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::Delimiter,
@@ -265,7 +262,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For block comment pairs.
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::BlockComment,
@@ -275,7 +271,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For block string pairs.
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::String,
@@ -285,7 +280,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For symmetric block strings (same opening and closing)
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::String,
@@ -295,7 +289,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For inline span pairs
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::InlineSpan,
@@ -305,7 +298,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For symmetric inline spans
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::InlineSpan,
@@ -315,7 +307,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For block span pairs
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::BlockSpan,
@@ -325,7 +316,6 @@ macro_rules! define_token_enum {
                 });
             )*
 
-            // For symmetric block spans
             $(
                 tokens.push($crate::languages::AvailableToken {
                     type_: $crate::languages::TokenType::BlockSpan,
@@ -339,7 +329,6 @@ macro_rules! define_token_enum {
         }
     };
 
-    // Legacy format without inline_span and block_span sections
     ($name:ident, $get_tokens:ident, {
         delimiters: { $($open:literal => $close:literal),* $(,)? },
         line_comment: [ $($line_comment:literal),* $(,)? ],
@@ -350,7 +339,6 @@ macro_rules! define_token_enum {
             $($block_string_open:literal => $block_string_close:literal),* $(,)?
         ]
     }) => {
-        // Call the macro with empty inline_span and block_span sections
         $crate::define_token_enum!($name, $get_tokens, {
             delimiters: { $($open => $close),* },
             line_comment: [ $($line_comment),* ],
@@ -364,4 +352,12 @@ macro_rules! define_token_enum {
             block_span: []
         });
     };
+}
+
+// Utility macro to count the number of elements in a repetition
+#[doc(hidden)]
+#[macro_export]
+macro_rules! count {
+    () => (0usize);
+    ( $x:tt $($xs:tt)* ) => (1usize + $crate::count!($($xs)*));
 }
