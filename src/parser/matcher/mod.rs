@@ -106,6 +106,17 @@ impl Match {
             stack_height: None,
         }
     }
+
+    pub fn len(&self) -> usize {
+        match self.kind {
+            Kind::Opening | Kind::NonPair => self.token.opening().len(),
+            Kind::Closing => self
+                .token
+                .closing()
+                .unwrap_or_else(|| self.token.opening())
+                .len(),
+        }
+    }
 }
 
 impl IntoLua for Match {
@@ -136,9 +147,9 @@ impl IntoLua for MatchWithLine {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
         let table = lua.create_table()?;
 
-        table.set(0, self.token.opening())?;
+        table.set(1, self.token.opening())?;
         if let Some(closing) = self.token.closing() {
-            table.set(1, closing)?;
+            table.set(2, closing)?;
         }
         table.set("line", self.line)?;
         table.set("col", self.col)?;

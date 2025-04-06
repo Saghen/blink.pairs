@@ -64,7 +64,7 @@ impl ParsedBuffer {
         self.matches_by_line
             .get(line_number)?
             .iter()
-            .find(|match_| (match_.col..(match_.col + match_.token.opening().len())).contains(&col))
+            .find(|match_| (match_.col..(match_.col + match_.len())).contains(&col))
             .cloned()
     }
 
@@ -96,7 +96,7 @@ impl ParsedBuffer {
         }
         // Closing match
         else {
-            let opening_match = self.matches_by_line[0..(line_number + 1)]
+            let opening_match = self.matches_by_line[0..=line_number]
                 .iter()
                 .enumerate()
                 .rev()
@@ -105,7 +105,7 @@ impl ParsedBuffer {
                         .iter()
                         .rev()
                         .find(|match_| {
-                            (line_number != matches_line_number || match_.col < col)
+                            (line_number != matches_line_number || match_.col + match_.len() < col)
                                 && match_at_pos.token == match_.token
                                 && match_at_pos.stack_height == match_.stack_height
                         })

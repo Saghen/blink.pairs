@@ -27,9 +27,9 @@ function M.setup(config)
       if pair == nil then return end
 
       -- Highlight matches
-      for _, match in ipairs(pair) do
+      for i, match in ipairs(pair) do
         vim.api.nvim_buf_set_extmark(buf, ns, match.line, match.col, {
-          end_col = match.col + match[0]:len(),
+          end_col = match.col + match[i]:len(),
           hl_group = config.matchparen.group,
           hl_mode = 'combine',
           priority = config.matchparen.priority,
