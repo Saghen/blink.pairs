@@ -1,14 +1,18 @@
-use buffer::ParsedBuffer;
 use languages::{AvailableToken, TokenType};
 use mlua::prelude::*;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-use parser::{Match, MatchWithLine};
-
 pub mod buffer;
 pub mod languages;
 pub mod parser;
+
+// Re-export main modules for easier access
+pub use buffer::ParsedBuffer;
+pub use parser::Span;
+
+// Import for internal use
+use parser::{Match, MatchWithLine};
 
 static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -16,12 +20,9 @@ static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
 fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
     match PARSED_BUFFERS.lock() {
         Ok(lock) => lock,
-        Err(_) => {
-            // Reset the mutex
-            PARSED_BUFFERS.clear_poison();
-            let mut parsed_buffers = PARSED_BUFFERS.lock().unwrap();
-            *parsed_buffers = HashMap::new();
-            parsed_buffers
+        Err(poisoned) => {
+            // Return the poisoned lock's data anyway
+            poisoned.into_inner()
         }
     }
 }

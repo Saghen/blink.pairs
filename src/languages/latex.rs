@@ -12,5 +12,7 @@ define_token_enum!(LatexToken, latex_tokens, {
     block_string: [
         symmetric "\\$",
         symmetric "\\$\\$"
-    ]
+    ],
+    inline_span: [],
+    block_span: []
 });

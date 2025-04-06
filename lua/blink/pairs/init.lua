@@ -49,4 +49,12 @@ function pairs.download_if_available(callback)
   }, callback)
 end
 
+-- Get match at a given position in a buffer
+function pairs.get_match_at(bufnr, row, col)
+  local ok, blink_pairs = pcall(require, 'blink_pairs')
+  if not ok or not blink_pairs.get_match_at then return nil end
+
+  return blink_pairs.get_match_at(bufnr, row, col)
+end
+
 return pairs

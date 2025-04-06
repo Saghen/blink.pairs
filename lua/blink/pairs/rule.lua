@@ -25,6 +25,23 @@ local function as_func(val, default)
   return function() return val end
 end
 
+--- Helper function to safely check if we're inside a specific span type
+--- @param span_name string The name of the span to check for (e.g., "math")
+--- @return boolean Whether we're currently inside the specified span
+function M.is_in_span(span_name)
+  local ok, blink = pcall(require, 'blink.pairs')
+  if not ok then
+    return false 
+  end
+  
+  local bufnr = vim.api.nvim_get_current_buf()
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  
+  local match_at = blink.get_match_at(bufnr, cursor[1] - 1, cursor[2])
+  
+  return match_at ~= nil and match_at.span_name == span_name
+end
+
 --- Takes a table of user friendly rule definitions and converts it to a table of rules
 --- @param definitions blink.pairs.RuleDefinitions
 --- @return blink.pairs.RulesByKey

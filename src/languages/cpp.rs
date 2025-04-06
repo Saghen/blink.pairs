@@ -9,5 +9,7 @@ define_token_enum!(CppToken, cpp_tokens, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string_regex: ["(?&dstring)", "(?&schar)"],
-    block_string: ["R\"(" => ")\""]
+    block_string: ["R\"(" => ")\""],
+    inline_span: [],
+    block_span: []
 });

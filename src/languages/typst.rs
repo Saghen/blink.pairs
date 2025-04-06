@@ -9,5 +9,11 @@ define_token_enum!(TypstToken, typst_tokens, {
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string_regex: ["(?&dstring)", "(?&sstring)"],
-    block_string: []
+    block_string: [],
+    inline_span: [
+        symmetric "$" => "math"
+    ],
+    block_span: [
+        symmetric "$$" => "math" 
+    ]
 });
