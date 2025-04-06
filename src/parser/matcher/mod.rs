@@ -10,7 +10,11 @@ pub use token_type::*;
 use crate::parser::{CharPos, State};
 
 pub trait Matcher {
-    fn tokens(&self) -> Vec<u8>;
+    const TOKENS: &[u8];
+    #[inline(always)]
+    fn tokens(&self) -> &'static [u8] {
+        Self::TOKENS
+    }
 
     fn call<I>(
         &mut self,

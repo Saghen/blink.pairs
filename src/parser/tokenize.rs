@@ -17,7 +17,7 @@ impl CharPos {
 /// Takes input text and uses SIMD to find the provided list of tokens in the text
 /// returning the byte and column position of each token. You can get the row by counting
 /// every incoming `\n` token
-pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = CharPos> + '_ {
+pub fn tokenize<'s, 't>(text: &'s str, tokens: &'t [u8]) -> impl Iterator<Item = CharPos> + 's {
     // Tokens
     let none = SimdVec::splat(0);
 
@@ -25,8 +25,8 @@ pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = CharPos> + 
     let escape = SimdVec::splat(b'\\');
 
     let tokens_to_find = tokens
-        .into_iter()
-        .flat_map(|c| {
+        .iter()
+        .flat_map(|&c| {
             match c {
                 // Enabled by default, ignore
                 0 | b'\n' | b'\\' => None,
@@ -97,7 +97,7 @@ mod tests {
         .join("\n");
 
         assert_eq!(
-            tokenize(&text, vec![b'(', b')', b'{', b'}']).collect::<Vec<_>>(),
+            tokenize(&text, &[b'(', b')', b'{', b'}']).collect::<Vec<_>>(),
             vec![
                 CharPos::new(b'\n', 0),
                 CharPos::new(b'\n', 0),

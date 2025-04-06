@@ -206,9 +206,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         pub struct #name;
 
         impl Matcher for #name {
-            fn tokens(&self) -> Vec<u8> {
-                vec![#(#token_literals),*]
-            }
+            const TOKENS: &[u8] = &[#(#token_literals),*];
 
             fn call<I>(
                 &mut self,
