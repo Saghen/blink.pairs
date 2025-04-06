@@ -39,15 +39,3 @@ impl Token {
         }
     }
 }
-
-impl From<u8> for Token {
-    fn from(byte: u8) -> Self {
-        match byte {
-            // b'(' | b')' => Token::Delimiter("(", ")"),
-            // b'[' | b']' => Token::Delimiter("[", "]"),
-            b'{' | b'}' => Token::Delimiter("{", "}"),
-
-            _ => panic!("Invalid or ambiguous token type"),
-        }
-    }
-}

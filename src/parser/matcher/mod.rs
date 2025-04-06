@@ -65,6 +65,29 @@ impl Match {
         }
     }
 
+    pub fn line_comment(text: &'static str, col: usize) -> Self {
+        Self {
+            kind: Kind::NonPair,
+            token: Token::LineComment(text),
+            col,
+            stack_height: None,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self.kind {
+            Kind::Opening | Kind::NonPair => self.token.opening().len(),
+            Kind::Closing => self
+                .token
+                .closing()
+                .unwrap_or_else(|| self.token.opening())
+                .len(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Match {
     pub fn delimiter(char: char, col: usize, stack_height: Option<usize>) -> Self {
         let (kind, token) = match char {
             '{' => (Kind::Opening, Token::Delimiter("{", "}")),
@@ -95,26 +118,6 @@ impl Match {
             token,
             col,
             stack_height: None,
-        }
-    }
-
-    pub fn line_comment(text: &'static str, col: usize) -> Self {
-        Self {
-            kind: Kind::NonPair,
-            token: Token::LineComment(text),
-            col,
-            stack_height: None,
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        match self.kind {
-            Kind::Opening | Kind::NonPair => self.token.opening().len(),
-            Kind::Closing => self
-                .token
-                .closing()
-                .unwrap_or_else(|| self.token.opening())
-                .len(),
         }
     }
 }
