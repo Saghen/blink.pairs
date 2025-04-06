@@ -1,17 +1,15 @@
 #![feature(portable_simd)]
 
-use buffer::ParsedBuffer;
-use languages::{AvailableToken, TokenType};
 use mlua::prelude::*;
+use parser::matcher::MatchTokenType;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
+use buffer::ParsedBuffer;
 use parser::{Match, MatchWithLine};
 
 pub mod buffer;
-pub mod languages;
 pub mod parser;
-pub mod simd;
 
 static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -65,19 +63,19 @@ fn parse_buffer(
 
 fn get_line_matches(
     _lua: &Lua,
-    (bufnr, line_number, type_): (usize, usize, Option<u8>),
+    (bufnr, line_number, token_type): (usize, usize, Option<u8>),
 ) -> LuaResult<Vec<Match>> {
     let parsed_buffers = get_parsed_buffers();
-    let type_ = type_
+    let token_type = token_type
         // TODO: don't ignore the error
         .and_then(|type_| type_.try_into().ok())
-        .unwrap_or(TokenType::Delimiter);
+        .unwrap_or(MatchTokenType::Delimiter);
 
     if let Some(parsed_buffer) = parsed_buffers.get(&bufnr) {
         if let Some(line_matches) = parsed_buffer.line_matches(line_number) {
             return Ok(line_matches
                 .iter()
-                .filter(|match_| match_.type_ == type_)
+                .filter(|m| token_type.matches(&m.token))
                 .cloned()
                 .collect());
         }
@@ -102,11 +100,6 @@ fn get_match_pair(
         .map(|(open, close)| vec![open, close]))
 }
 
-fn get_filetype_tokens(_lua: &Lua, (filetype,): (String,)) -> LuaResult<Vec<AvailableToken>> {
-    let tokens = parser::filetype_tokens(&filetype);
-    Ok(tokens.unwrap_or_default())
-}
-
 // NOTE: skip_memory_check greatly improves performance
 // https://github.com/mlua-rs/mlua/issues/318
 #[mlua::lua_module(skip_memory_check)]
@@ -116,9 +109,5 @@ fn blink_pairs(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("get_line_matches", lua.create_function(get_line_matches)?)?;
     exports.set("get_match_at", lua.create_function(get_match_at)?)?;
     exports.set("get_match_pair", lua.create_function(get_match_pair)?)?;
-    exports.set(
-        "get_filetype_tokens",
-        lua.create_function(get_filetype_tokens)?,
-    )?;
     Ok(exports)
 }

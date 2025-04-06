@@ -1,13 +1,13 @@
-use crate::parser::{parse_filetype, Match, MatchWithLine, ParseState};
+use crate::parser::{parse_filetype, Match, MatchWithLine, State};
 
 pub struct ParsedBuffer {
     matches_by_line: Vec<Vec<Match>>,
-    state_by_line: Vec<ParseState>,
+    state_by_line: Vec<State>,
 }
 
 impl ParsedBuffer {
     pub fn parse(filetype: &str, lines: &[&str]) -> Option<Self> {
-        let (matches_by_line, state_by_line) = parse_filetype(filetype, lines, ParseState::Normal)?;
+        let (matches_by_line, state_by_line) = parse_filetype(filetype, lines, State::Normal)?;
 
         Some(Self {
             matches_by_line,
@@ -31,9 +31,9 @@ impl ParsedBuffer {
             self.state_by_line
                 .get(start_line - 1)
                 .cloned()
-                .unwrap_or(ParseState::Normal)
+                .unwrap_or(State::Normal)
         } else {
-            ParseState::Normal
+            State::Normal
         };
 
         if let Some((matches_by_line, state_by_line)) =
@@ -64,7 +64,7 @@ impl ParsedBuffer {
         self.matches_by_line
             .get(line_number)?
             .iter()
-            .find(|match_| (match_.col..(match_.col + match_.text.len())).contains(&col))
+            .find(|match_| (match_.col..(match_.col + match_.token.text().len())).contains(&col))
             .cloned()
     }
 
@@ -76,7 +76,7 @@ impl ParsedBuffer {
         let match_at_pos = self.match_at(line_number, col)?.with_line(line_number);
 
         // Opening match
-        if match_at_pos.closing.is_some() {
+        if match_at_pos.token.is_opening() {
             let closing_match = self.matches_by_line[line_number..]
                 .iter()
                 .enumerate()
@@ -86,8 +86,7 @@ impl ParsedBuffer {
                         .iter()
                         .find(|match_| {
                             (line_number != matches_line_number || match_.col > col)
-                                && match_at_pos.type_ == match_.type_
-                                && match_at_pos.closing == Some(match_.text)
+                                && match_at_pos.token.is_pair(&match_.token)
                                 && match_at_pos.stack_height == match_.stack_height
                         })
                         .map(|match_| match_.with_line(matches_line_number))
@@ -107,8 +106,7 @@ impl ParsedBuffer {
                         .rev()
                         .find(|match_| {
                             (line_number != matches_line_number || match_.col < col)
-                                && match_at_pos.type_ == match_.type_
-                                && Some(match_at_pos.text) == match_.closing
+                                && match_at_pos.token.is_pair(&match_.token)
                                 && match_at_pos.stack_height == match_.stack_height
                         })
                         .map(|match_| match_.with_line(matches_line_number))
@@ -123,21 +121,19 @@ impl ParsedBuffer {
 
         for matches in self.matches_by_line.iter_mut() {
             for match_ in matches {
-                match &match_.closing {
-                    // Opening delimiter
-                    Some(closing) => {
-                        match_.stack_height = Some(stack.len());
-                        stack.push(closing);
-                    }
-                    // Closing delimiter
-                    None => {
-                        if let Some(closing) = stack.last() {
-                            if *closing == &match_.text {
-                                stack.pop();
-                            }
+                // Opening delimiter
+                if match_.token.is_opening() {
+                    match_.stack_height = Some(stack.len());
+                    stack.push(match_.token.clone());
+                }
+                // Closing delimiter
+                else {
+                    if let Some(closing) = stack.last() {
+                        if closing.is_pair(&match_.token) {
+                            stack.pop();
                         }
-                        match_.stack_height = Some(stack.len());
                     }
+                    match_.stack_height = Some(stack.len());
                 }
             }
         }

@@ -338,60 +338,12 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
     // Generate match arms for all patterns
     let mut match_arms = Vec::new();
 
-    // 1. Delimiter patterns
-    for (open, close) in &def.delimiters {
-        let close_byte = close.as_bytes()[0];
+    // Order matters, we want to prioritize:
+    // - block strings and block comments
+    // - line comments, strings, and chars
+    // - finally, delimiters
 
-        // Opening delimiter
-        let open_arm = create_match_arm(
-            max_lookahead,
-            quote! { State::Normal },
-            open,
-            generate_if_adjacent(open.len() - 1),
-            quote! {
-                matches.push(token.into_match(Some(stack.len())));
-                stack.push(#close_byte);
-                State::Normal
-            },
-        );
-        match_arms.push(open_arm);
-
-        // Closing delimiter
-        let close_arm = create_match_arm(
-            max_lookahead,
-            quote! { State::Normal },
-            close,
-            generate_if_adjacent(close.len() - 1),
-            quote! {
-                if let Some(closing) = stack.last() {
-                    if token.byte == *closing {
-                        stack.pop();
-                    }
-                }
-                matches.push(token.into_match(Some(stack.len())));
-                State::Normal
-            },
-        );
-        match_arms.push(close_arm);
-    }
-
-    // 2. Line comment patterns
-    for comment in &def.line_comments {
-        let arm = create_match_arm(
-            max_lookahead,
-            quote! { State::Normal },
-            comment,
-            generate_if_adjacent(comment.len() - 1),
-            quote! {
-                matches.push(Match::new(MatchToken::LineComment(#comment), token.col));
-                tokens.next(); // Skip next token
-                State::InLineComment
-            },
-        );
-        match_arms.push(arm);
-    }
-
-    // 3. Block comment patterns
+    // 1. Block comment patterns
     for (open, close) in &def.block_comments {
         let open_arm = create_match_arm(
             max_lookahead,
@@ -424,6 +376,57 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             },
         );
         match_arms.push(close_arm);
+    }
+
+    // 2. Block string patterns
+    for (open, close) in &def.block_strings {
+        let open_arm = create_match_arm(
+            max_lookahead,
+            quote! { State::Normal },
+            open,
+            generate_if_adjacent(open.len() - 1),
+            quote! {
+                matches.push(Match::new(
+                    MatchToken::BlockStringOpen(#open, #close),
+                    token.col,
+                ));
+                tokens.next(); // Skip next token
+                State::InBlockString(#open)
+            },
+        );
+        match_arms.push(open_arm);
+
+        let close_arm = create_match_arm(
+            max_lookahead,
+            quote! { State::InBlockString(#open) },
+            close,
+            generate_if_adjacent(close.len() - 1),
+            quote! {
+                matches.push(Match::new(
+                    MatchToken::BlockStringClose(#open, #close),
+                    token.col,
+                ));
+                tokens.next(); // Skip next token
+                State::Normal
+            },
+        );
+        match_arms.push(close_arm);
+    }
+
+    // 3. Line comment patterns
+    for comment in &def.line_comments {
+        let arm = create_match_arm(
+            max_lookahead,
+            quote! { State::Normal },
+            comment,
+            generate_if_adjacent(comment.len() - 1),
+            quote! {
+                matches.push(Match::new(MatchToken::LineComment(#comment), token.col));
+                tokens.next(); // Skip next token
+                State::InLineComment
+            },
+        );
+        match_arms.push(arm);
     }
 
     // 4. String patterns
@@ -476,35 +479,37 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(arm);
     }
 
-    // 6. Block string patterns
-    for (open, close) in &def.block_strings {
+    // 6. Delimiter patterns
+    for (open, close) in &def.delimiters {
+        let close_byte = close.as_bytes()[0];
+
+        // Opening delimiter
         let open_arm = create_match_arm(
             max_lookahead,
             quote! { State::Normal },
             open,
             generate_if_adjacent(open.len() - 1),
             quote! {
-                matches.push(Match::new(
-                    MatchToken::BlockStringOpen(#open, #close),
-                    token.col,
-                ));
-                tokens.next(); // Skip next token
-                State::InBlockString(#open)
+                matches.push(token.into_match(Some(stack.len())));
+                stack.push(#close_byte);
+                State::Normal
             },
         );
         match_arms.push(open_arm);
 
+        // Closing delimiter
         let close_arm = create_match_arm(
             max_lookahead,
-            quote! { State::InBlockString(#open) },
+            quote! { State::Normal },
             close,
             generate_if_adjacent(close.len() - 1),
             quote! {
-                matches.push(Match::new(
-                    MatchToken::BlockStringClose(#open, #close),
-                    token.col,
-                ));
-                tokens.next(); // Skip next token
+                if let Some(closing) = stack.last() {
+                    if token.byte == *closing {
+                        stack.pop();
+                    }
+                }
+                matches.push(token.into_match(Some(stack.len())));
                 State::Normal
             },
         );
