@@ -92,10 +92,10 @@ impl ParsedBuffer {
                         .map(|match_| match_.with_line(matches_line_number))
                 })?;
 
-            return Some((match_at_pos, closing_match));
+            Some((match_at_pos, closing_match))
         }
         // Closing match
-        else {
+        else if match_at_pos.kind == Kind::Closing {
             let opening_match = self.matches_by_line[0..=line_number]
                 .iter()
                 .enumerate()
@@ -112,7 +112,9 @@ impl ParsedBuffer {
                         .map(|match_| match_.with_line(matches_line_number))
                 })?;
 
-            return Some((opening_match, match_at_pos));
+            Some((opening_match, match_at_pos))
+        } else {
+            None
         }
     }
 
