@@ -7,7 +7,7 @@ mod token_type;
 pub use token::*;
 pub use token_type::*;
 
-use crate::parser::{State, TokenPos};
+use crate::parser::{CharPos, State};
 
 pub trait Matcher {
     fn tokens(&self) -> Vec<u8>;
@@ -18,43 +18,87 @@ pub trait Matcher {
         stack: &mut Vec<u8>,
         tokens: &mut MultiPeek<I>,
         state: State,
-        token: TokenPos,
+        token: CharPos,
     ) -> State
     where
-        I: Iterator<Item = TokenPos>;
+        I: Iterator<Item = CharPos>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Match {
-    pub token: MatchToken,
+    pub kind: Kind,
+    pub token: Token,
     pub col: usize,
     pub stack_height: Option<usize>,
 }
 
 impl Match {
-    pub fn new(token: MatchToken, col: usize) -> Self {
+    pub fn new(kind: Kind, token: Token, col: usize) -> Self {
         Self {
+            kind,
             token,
             col,
             stack_height: None,
         }
     }
 
+    pub fn new_with_stack(kind: Kind, token: Token, col: usize, stack_height: usize) -> Self {
+        Self {
+            kind,
+            token,
+            col,
+            stack_height: Some(stack_height),
+        }
+    }
+
     pub fn with_line(&self, line: usize) -> MatchWithLine {
         MatchWithLine {
+            kind: self.kind,
             token: self.token.clone(),
             line,
             col: self.col,
             stack_height: self.stack_height,
         }
     }
-}
 
-impl From<TokenPos> for Match {
-    fn from(token: TokenPos) -> Self {
-        Match {
-            token: token.byte.into(),
-            col: token.col,
+    pub fn delimiter(char: char, col: usize, stack_height: Option<usize>) -> Self {
+        let (kind, token) = match char {
+            '{' => (Kind::Opening, Token::Delimiter("{", "}")),
+            '}' => (Kind::Closing, Token::Delimiter("{", "}")),
+            '[' => (Kind::Opening, Token::Delimiter("[", "]")),
+            ']' => (Kind::Closing, Token::Delimiter("[", "]")),
+            '(' => (Kind::Opening, Token::Delimiter("(", ")")),
+            ')' => (Kind::Closing, Token::Delimiter("(", ")")),
+            _ => panic!("Unknown token type"),
+        };
+
+        Self {
+            kind,
+            token,
+            col,
+            stack_height,
+        }
+    }
+
+    pub fn block_comment(text: &'static str, col: usize) -> Self {
+        let (kind, token) = match text {
+            "/*" => (Kind::Opening, Token::BlockComment("/*", "*/")),
+            "*/" => (Kind::Closing, Token::BlockComment("/*", "*/")),
+            _ => panic!("Unknown token type"),
+        };
+        Self {
+            kind,
+            token,
+            col,
+            stack_height: None,
+        }
+    }
+
+    pub fn line_comment(text: &'static str, col: usize) -> Self {
+        Self {
+            kind: Kind::NonPair,
+            token: Token::LineComment(text),
+            col,
             stack_height: None,
         }
     }
@@ -64,11 +108,10 @@ impl IntoLua for Match {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
         let table = lua.create_table()?;
 
-        table.set("text", self.token.opening())?;
+        table.set(0, self.token.opening())?;
         if let Some(closing) = self.token.closing() {
-            table.set("closing", closing)?;
+            table.set(1, closing)?;
         }
-
         table.set("col", self.col)?;
         table.set("stack_height", self.stack_height)?;
 
@@ -78,7 +121,8 @@ impl IntoLua for Match {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchWithLine {
-    pub token: MatchToken,
+    pub kind: Kind,
+    pub token: Token,
     pub line: usize,
     pub col: usize,
     pub stack_height: Option<usize>,
@@ -88,11 +132,10 @@ impl IntoLua for MatchWithLine {
     fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
         let table = lua.create_table()?;
 
-        table.set("text", self.token.opening())?;
+        table.set(0, self.token.opening())?;
         if let Some(closing) = self.token.closing() {
-            table.set("closing", closing)?;
+            table.set(1, closing)?;
         }
-
         table.set("line", self.line)?;
         table.set("col", self.col)?;
         table.set("stack_height", self.stack_height)?;

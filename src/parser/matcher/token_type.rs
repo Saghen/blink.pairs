@@ -1,8 +1,8 @@
-use super::MatchToken;
+use super::Token;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
-pub enum MatchTokenType {
+pub enum TokenType {
     Delimiter = 0,
     String = 1,
     BlockString = 2,
@@ -10,35 +10,31 @@ pub enum MatchTokenType {
     BlockComment = 4,
 }
 
-impl MatchTokenType {
-    pub fn matches(&self, token: &MatchToken) -> bool {
-        use MatchTokenType::*;
+impl TokenType {
+    pub fn matches(&self, token: &Token) -> bool {
+        use TokenType::*;
         match (self, token) {
-            (Delimiter, MatchToken::DelimiterOpen(_, _))
-            | (Delimiter, MatchToken::DelimiterClose(_, _))
-            | (String, MatchToken::StringOpen(_))
-            | (String, MatchToken::StringClose(_))
-            | (BlockString, MatchToken::BlockStringOpen(_, _))
-            | (BlockString, MatchToken::BlockStringClose(_, _))
-            | (LineComment, MatchToken::LineComment(_))
-            | (BlockComment, MatchToken::BlockCommentOpen(_, _))
-            | (BlockComment, MatchToken::BlockCommentClose(_, _)) => true,
+            (Delimiter, Token::Delimiter(_, _))
+            | (String, Token::String(_))
+            | (BlockString, Token::BlockString(_, _))
+            | (LineComment, Token::LineComment(_))
+            | (BlockComment, Token::BlockComment(_, _)) => true,
 
             _ => false,
         }
     }
 }
 
-impl TryFrom<u8> for MatchTokenType {
+impl TryFrom<u8> for TokenType {
     type Error = ();
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(MatchTokenType::Delimiter),
-            1 => Ok(MatchTokenType::String),
-            2 => Ok(MatchTokenType::BlockString),
-            3 => Ok(MatchTokenType::LineComment),
-            4 => Ok(MatchTokenType::BlockComment),
+            0 => Ok(TokenType::Delimiter),
+            1 => Ok(TokenType::String),
+            2 => Ok(TokenType::BlockString),
+            3 => Ok(TokenType::LineComment),
+            4 => Ok(TokenType::BlockComment),
             _ => Err(()),
         }
     }

@@ -9,9 +9,9 @@ define_matcher!(Rust {
     ],
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
-    string: ["\""],
     char: ["'"],
     block_string: [
+        "\"" => "\"",
         "r#\"" => "\"#",
         "r##\"" => "\"##",
         "r###\"" => "\"###"

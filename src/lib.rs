@@ -1,7 +1,7 @@
 #![feature(portable_simd)]
 
 use mlua::prelude::*;
-use parser::matcher::MatchTokenType;
+use parser::matcher::TokenType;
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -68,8 +68,8 @@ fn get_line_matches(
     let parsed_buffers = get_parsed_buffers();
     let token_type = token_type
         // TODO: don't ignore the error
-        .and_then(|type_| type_.try_into().ok())
-        .unwrap_or(MatchTokenType::Delimiter);
+        .and_then(|token_type| token_type.try_into().ok())
+        .unwrap_or(TokenType::Delimiter);
 
     if let Some(parsed_buffer) = parsed_buffers.get(&bufnr) {
         if let Some(line_matches) = parsed_buffer.line_matches(line_number) {

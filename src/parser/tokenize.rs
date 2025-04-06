@@ -1,27 +1,23 @@
 use std::{cell::Cell, rc::Rc, simd::cmp::SimdPartialEq};
 
-use super::{Match, SimdVec};
+use super::SimdVec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TokenPos {
+pub struct CharPos {
     pub byte: u8,
     pub col: usize,
 }
 
-impl TokenPos {
-    pub fn into_match(self, stack_height: Option<usize>) -> Match {
-        Match {
-            token: self.byte.into(),
-            col: self.col,
-            stack_height,
-        }
+impl CharPos {
+    pub fn new(byte: u8, col: usize) -> Self {
+        Self { byte, col }
     }
 }
 
 /// Takes input text and uses SIMD to find the provided list of tokens in the text
 /// returning the byte and column position of each token. You can get the row by counting
 /// every incoming `\n` token
-pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = TokenPos> + '_ {
+pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = CharPos> + '_ {
     // Tokens
     let none = SimdVec::splat(0);
 
@@ -42,6 +38,9 @@ pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = TokenPos> +
 
     //
 
+    // TODO: must use Rc and Cell here since we need to mutate the value inside a closure
+    // which uses `move`, so otherwise we would copy, and the value would be reset on every
+    // chunk
     let col_offset = Rc::new(Cell::new(0));
     text.as_bytes()
         .chunks(SimdVec::LEN)
@@ -68,12 +67,12 @@ pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = TokenPos> +
                     b'\n' => {
                         col_offset.set(chunk_col + idx_in_chunk + 1);
 
-                        return Some(TokenPos {
+                        return Some(CharPos {
                             byte: b'\n',
                             col: 0,
                         });
                     }
-                    byte => Some(TokenPos {
+                    byte => Some(CharPos {
                         byte,
                         col: chunk_col + idx_in_chunk - col_offset.get(),
                     }),
@@ -81,63 +80,31 @@ pub fn tokenize(text: &str, tokens: Vec<u8>) -> impl Iterator<Item = TokenPos> +
         })
 }
 
+// TODO: come up with a better way to do testing
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_tokenize() {
-        let text = "use crate::r#const::*;
-use std::ops::Not;
-use std::simd::cmp::*;
-use std::simd::num::SimdUint;
-use std::simd::{Mask, Simd};
-
-use super::{HaystackChar, NeedleChar, SimdMask, SimdNum, SimdVec};";
+        let text = vec![
+            "use crate::r#const::*;",
+            "use std::ops::Not;",
+            "use std::simd::cmp::*;",
+            "use std::simd::num::SimdUint;",
+            "use std::simd::{Mask, Simd};",
+        ]
+        .join("\n");
 
         assert_eq!(
-            tokenize(text, vec![b'(', b')', b'{', b'}']).collect::<Vec<_>>(),
+            tokenize(&text, vec![b'(', b')', b'{', b'}']).collect::<Vec<_>>(),
             vec![
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'{',
-                    col: 15
-                },
-                TokenPos {
-                    byte: b'}',
-                    col: 26
-                },
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'\n',
-                    col: 0
-                },
-                TokenPos {
-                    byte: b'{',
-                    col: 11
-                },
-                TokenPos {
-                    byte: b'}',
-                    col: 64
-                },
+                CharPos::new(b'\n', 0),
+                CharPos::new(b'\n', 0),
+                CharPos::new(b'\n', 0),
+                CharPos::new(b'\n', 0),
+                CharPos::new(b'{', 15),
+                CharPos::new(b'}', 26),
             ]
         );
     }

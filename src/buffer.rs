@@ -1,4 +1,4 @@
-use crate::parser::{parse_filetype, Match, MatchWithLine, State};
+use crate::parser::{parse_filetype, Kind, Match, MatchWithLine, State};
 
 pub struct ParsedBuffer {
     matches_by_line: Vec<Vec<Match>>,
@@ -64,7 +64,7 @@ impl ParsedBuffer {
         self.matches_by_line
             .get(line_number)?
             .iter()
-            .find(|match_| (match_.col..(match_.col + match_.token.text().len())).contains(&col))
+            .find(|match_| (match_.col..(match_.col + match_.token.opening().len())).contains(&col))
             .cloned()
     }
 
@@ -76,7 +76,7 @@ impl ParsedBuffer {
         let match_at_pos = self.match_at(line_number, col)?.with_line(line_number);
 
         // Opening match
-        if match_at_pos.token.is_opening() {
+        if match_at_pos.kind == Kind::Opening {
             let closing_match = self.matches_by_line[line_number..]
                 .iter()
                 .enumerate()
@@ -86,7 +86,7 @@ impl ParsedBuffer {
                         .iter()
                         .find(|match_| {
                             (line_number != matches_line_number || match_.col > col)
-                                && match_at_pos.token.is_pair(&match_.token)
+                                && match_at_pos.token == match_.token
                                 && match_at_pos.stack_height == match_.stack_height
                         })
                         .map(|match_| match_.with_line(matches_line_number))
@@ -106,7 +106,7 @@ impl ParsedBuffer {
                         .rev()
                         .find(|match_| {
                             (line_number != matches_line_number || match_.col < col)
-                                && match_at_pos.token.is_pair(&match_.token)
+                                && match_at_pos.token == match_.token
                                 && match_at_pos.stack_height == match_.stack_height
                         })
                         .map(|match_| match_.with_line(matches_line_number))
@@ -122,14 +122,14 @@ impl ParsedBuffer {
         for matches in self.matches_by_line.iter_mut() {
             for match_ in matches {
                 // Opening delimiter
-                if match_.token.is_opening() {
+                if match_.kind == Kind::Opening {
                     match_.stack_height = Some(stack.len());
-                    stack.push(match_.token.clone());
+                    stack.push(&match_.token);
                 }
                 // Closing delimiter
                 else {
                     if let Some(closing) = stack.last() {
-                        if closing.is_pair(&match_.token) {
+                        if *closing == &match_.token {
                             stack.pop();
                         }
                     }

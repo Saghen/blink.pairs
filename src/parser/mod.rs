@@ -6,9 +6,9 @@ pub mod parse;
 pub mod tokenize;
 
 pub use itertools::MultiPeek;
-pub use matcher::{Match, MatchToken, MatchWithLine, Matcher};
+pub use matcher::{Kind, Match, MatchWithLine, Matcher, Token};
 pub use parse::{parse, State};
-pub use tokenize::{tokenize, TokenPos};
+pub use tokenize::{tokenize, CharPos};
 
 pub fn parse_filetype(
     filetype: &str,
