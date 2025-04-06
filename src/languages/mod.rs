@@ -112,7 +112,7 @@ pub enum Token {
     Escape,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
 #[repr(u8)]
 pub enum TokenType {
     Delimiter = 0,

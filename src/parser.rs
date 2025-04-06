@@ -1,6 +1,7 @@
 use logos::{Lexer, Logos};
 use mlua::{serde::Serializer, IntoLua, SerializeOptions};
 use serde::Serialize;
+use std::collections::HashMap;
 
 use super::languages::*;
 
@@ -15,6 +16,7 @@ pub struct Match {
     pub col: usize,
     pub stack_height: Option<usize>,
     pub span_name: Option<&'static str>,
+    pub span_id: Option<usize>,
 }
 
 impl Match {
@@ -26,6 +28,7 @@ impl Match {
             closing: self.closing,
             stack_height: self.stack_height,
             span_name: self.span_name,
+            span_id: self.span_id,
             line,
         }
     }
@@ -52,6 +55,7 @@ pub struct MatchWithLine {
     pub col: usize,
     pub stack_height: Option<usize>,
     pub span_name: Option<&'static str>,
+    pub span_id: Option<usize>,
 }
 
 impl IntoLua for MatchWithLine {
@@ -63,6 +67,36 @@ impl IntoLua for MatchWithLine {
     }
 }
 
+/// A structured representation of a span in the document
+#[derive(Debug, Clone)]
+pub struct Span {
+    /// Unique identifier for the span
+    pub id: usize,
+    /// The type of span (inline or block)
+    pub type_: TokenType,
+    /// Semantic name of the span
+    pub name: &'static str,
+    /// Opening token information
+    pub opening: SpanToken,
+    /// Closing token information (None if unclosed)
+    pub closing: Option<SpanToken>,
+    /// Parent span ID if this span is nested
+    pub parent_id: Option<usize>,
+    /// Child span IDs
+    pub children: Vec<usize>,
+}
+
+/// A token that marks the beginning or end of a span
+#[derive(Debug, Clone)]
+pub struct SpanToken {
+    /// Line number where the token appears
+    pub line: usize,
+    /// Column position where the token appears
+    pub col: usize,
+    /// The actual text of the token
+    pub text: &'static str,
+}
+
 #[derive(Debug, Clone)]
 pub enum ParseState {
     Normal,
@@ -71,10 +105,12 @@ pub enum ParseState {
     InInlineSpan {
         closing: &'static str,
         name: &'static str,
+        span_id: usize,
     },
     InBlockSpan {
         closing: &'static str,
         name: &'static str,
+        span_id: usize,
     },
 }
 
@@ -82,7 +118,7 @@ pub fn parse_filetype(
     filetype: &str,
     lines: &[&str],
     initial_state: ParseState,
-) -> Option<(Vec<Vec<Match>>, Vec<ParseState>)> {
+) -> Option<(Vec<Vec<Match>>, Vec<ParseState>, Vec<Span>)> {
     Some(match filetype {
         "c" => parse_with_lexer(CToken::lexer, lines, initial_state),
         "clojure" => parse_with_lexer(ClojureToken::lexer, lines, initial_state),
@@ -164,24 +200,19 @@ fn parse_with_lexer<'s, T>(
     mut lexer: impl FnMut(&'s str) -> Lexer<'s, T>,
     lines: &[&'s str],
     initial_state: ParseState,
-) -> (Vec<Vec<Match>>, Vec<ParseState>)
+) -> (Vec<Vec<Match>>, Vec<ParseState>, Vec<Span>)
 where
     T: Into<Token> + Logos<'s>,
 {
     let mut matches_by_line = Vec::with_capacity(lines.len());
     let mut state_by_line = Vec::with_capacity(lines.len());
     let mut stack = vec![];
-    
-    #[derive(Debug)]
-    struct SpanToken {
-        type_: TokenType, 
-        name: &'static str,
-        opening_line: usize,
-        opening_col: usize,
-        closing_line: Option<usize>,
-        closing_col: Option<usize>,
-    }
-    let mut span_stack: Vec<SpanToken> = vec![];
+
+    let mut spans = Vec::new();
+    let mut next_span_id = 0;
+    let mut span_stack = Vec::new();
+    let mut active_spans: HashMap<(TokenType, &'static str), Vec<usize>> = HashMap::new();
+    let mut parent_stack: Vec<usize> = Vec::new();
 
     let mut state = initial_state;
     for (line_idx, line) in lines.iter().enumerate() {
@@ -209,6 +240,7 @@ where
                         closing: Some(closing),
                         stack_height: Some(stack.len()),
                         span_name: None,
+                        span_id: None,
                     };
                     stack.push(closing);
                     current_line_matches.push(match_);
@@ -227,6 +259,7 @@ where
                         closing: None,
                         stack_height: Some(stack.len()),
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                 }
@@ -243,6 +276,7 @@ where
                         closing: Some(closing),
                         stack_height: None,
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                     state = InBlockComment(closing)
@@ -255,6 +289,7 @@ where
                         closing: None,
                         stack_height: None,
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                     state = Normal
@@ -269,6 +304,7 @@ where
                         closing: Some(closing),
                         stack_height: None,
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                     state = InBlockString(closing)
@@ -281,6 +317,7 @@ where
                         closing: Some(text),
                         stack_height: None,
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                     state = InBlockString(text)
@@ -297,6 +334,7 @@ where
                         closing: None,
                         stack_height: None,
                         span_name: None,
+                        span_id: None,
                     };
                     current_line_matches.push(match_);
                     state = Normal
@@ -312,6 +350,32 @@ where
                     },
                     _,
                 ) => {
+                    let span_id = next_span_id;
+                    next_span_id += 1;
+
+                    let span = Span {
+                        id: span_id,
+                        type_: TokenType::InlineSpan,
+                        name,
+                        opening: SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        },
+                        closing: None,
+                        parent_id: parent_stack.last().copied(),
+                        children: Vec::new(),
+                    };
+                    spans.push(span);
+
+                    active_spans
+                        .entry((TokenType::InlineSpan, name))
+                        .or_default()
+                        .push(span_id);
+
+                    span_stack.push(span_id);
+                    parent_stack.push(span_id);
+
                     let match_ = Match {
                         type_: TokenType::InlineSpan,
                         text,
@@ -319,20 +383,42 @@ where
                         closing: Some(closing),
                         stack_height: None,
                         span_name: Some(name),
+                        span_id: Some(span_id),
                     };
                     current_line_matches.push(match_);
-                    state = InInlineSpan { closing, name };
-                    
-                    span_stack.push(SpanToken {
-                        type_: TokenType::InlineSpan,
+                    state = InInlineSpan {
+                        closing,
                         name,
-                        opening_line: line_idx,
-                        opening_col: lexer.span().start,
-                        closing_line: None,
-                        closing_col: None,
-                    });
+                        span_id,
+                    };
                 }
                 (Normal, InlineSpanSymmetric { text, name }, _) => {
+                    let span_id = next_span_id;
+                    next_span_id += 1;
+
+                    let span = Span {
+                        id: span_id,
+                        type_: TokenType::InlineSpan,
+                        name,
+                        opening: SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        },
+                        closing: None,
+                        parent_id: parent_stack.last().copied(),
+                        children: Vec::new(),
+                    };
+                    spans.push(span);
+
+                    active_spans
+                        .entry((TokenType::InlineSpan, name))
+                        .or_default()
+                        .push(span_id);
+
+                    span_stack.push(span_id);
+                    parent_stack.push(span_id);
+
                     let match_ = Match {
                         type_: TokenType::InlineSpan,
                         text,
@@ -340,28 +426,47 @@ where
                         closing: Some(text),
                         stack_height: None,
                         span_name: Some(name),
+                        span_id: Some(span_id),
                     };
                     current_line_matches.push(match_);
                     state = InInlineSpan {
                         closing: text,
                         name,
+                        span_id,
                     };
-                    
-                    span_stack.push(SpanToken {
-                        type_: TokenType::InlineSpan,
-                        name,
-                        opening_line: line_idx,
-                        opening_col: lexer.span().start,
-                        closing_line: None,
-                        closing_col: None,
-                    });
                 }
                 (
-                    InInlineSpan { closing, name },
+                    InInlineSpan {
+                        closing,
+                        name,
+                        span_id,
+                    },
                     InlineSpanClose(text) | InlineSpanSymmetric { text, .. },
                     _,
                 ) if *closing == text => {
-                    let current_name = *name;
+                    let current_span_id = *span_id;
+
+                    if let Some(span) = spans.iter_mut().find(|s| s.id == current_span_id) {
+                        span.closing = Some(SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        });
+                    }
+
+                    if let Some(active) = active_spans.get_mut(&(TokenType::InlineSpan, *name)) {
+                        if let Some(pos) = active.iter().position(|id| *id == current_span_id) {
+                            active.remove(pos);
+                        }
+                    }
+
+                    if let Some(pos) = span_stack.iter().position(|id| *id == current_span_id) {
+                        span_stack.remove(pos);
+                    }
+
+                    if parent_stack.last() == Some(&current_span_id) {
+                        parent_stack.pop();
+                    }
 
                     let match_ = Match {
                         type_: TokenType::InlineSpan,
@@ -369,21 +474,11 @@ where
                         col: lexer.span().start,
                         closing: None,
                         stack_height: None,
-                        span_name: Some(current_name),
+                        span_name: Some(*name),
+                        span_id: Some(current_span_id),
                     };
                     current_line_matches.push(match_);
                     state = Normal;
-                    
-                    for i in (0..span_stack.len()).rev() {
-                        let span = &mut span_stack[i];
-                        if span.type_ == TokenType::InlineSpan 
-                           && span.name == current_name 
-                           && span.closing_line.is_none() {
-                            span.closing_line = Some(line_idx);
-                            span.closing_col = Some(lexer.span().start);
-                            break;
-                        }
-                    }
                 }
 
                 // Block spans
@@ -396,6 +491,32 @@ where
                     },
                     _,
                 ) => {
+                    let span_id = next_span_id;
+                    next_span_id += 1;
+
+                    let span = Span {
+                        id: span_id,
+                        type_: TokenType::BlockSpan,
+                        name,
+                        opening: SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        },
+                        closing: None,
+                        parent_id: parent_stack.last().copied(),
+                        children: Vec::new(),
+                    };
+                    spans.push(span);
+
+                    active_spans
+                        .entry((TokenType::BlockSpan, name))
+                        .or_default()
+                        .push(span_id);
+
+                    span_stack.push(span_id);
+                    parent_stack.push(span_id);
+
                     let match_ = Match {
                         type_: TokenType::BlockSpan,
                         text,
@@ -403,20 +524,42 @@ where
                         closing: Some(closing),
                         stack_height: None,
                         span_name: Some(name),
+                        span_id: Some(span_id),
                     };
                     current_line_matches.push(match_);
-                    state = InBlockSpan { closing, name };
-                    
-                    span_stack.push(SpanToken {
-                        type_: TokenType::BlockSpan,
+                    state = InBlockSpan {
+                        closing,
                         name,
-                        opening_line: line_idx,
-                        opening_col: lexer.span().start,
-                        closing_line: None,
-                        closing_col: None,
-                    });
+                        span_id,
+                    };
                 }
                 (Normal, BlockSpanSymmetric { text, name }, _) => {
+                    let span_id = next_span_id;
+                    next_span_id += 1;
+
+                    let span = Span {
+                        id: span_id,
+                        type_: TokenType::BlockSpan,
+                        name,
+                        opening: SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        },
+                        closing: None,
+                        parent_id: parent_stack.last().copied(),
+                        children: Vec::new(),
+                    };
+                    spans.push(span);
+
+                    active_spans
+                        .entry((TokenType::BlockSpan, name))
+                        .or_default()
+                        .push(span_id);
+
+                    span_stack.push(span_id);
+                    parent_stack.push(span_id);
+
                     let match_ = Match {
                         type_: TokenType::BlockSpan,
                         text,
@@ -424,28 +567,47 @@ where
                         closing: Some(text),
                         stack_height: None,
                         span_name: Some(name),
+                        span_id: Some(span_id),
                     };
                     current_line_matches.push(match_);
                     state = InBlockSpan {
                         closing: text,
                         name,
+                        span_id,
                     };
-                    
-                    span_stack.push(SpanToken {
-                        type_: TokenType::BlockSpan,
-                        name,
-                        opening_line: line_idx,
-                        opening_col: lexer.span().start,
-                        closing_line: None,
-                        closing_col: None,
-                    });
                 }
                 (
-                    InBlockSpan { closing, name },
+                    InBlockSpan {
+                        closing,
+                        name,
+                        span_id,
+                    },
                     BlockSpanClose(text) | BlockSpanSymmetric { text, .. },
                     _,
                 ) if *closing == text => {
-                    let current_name = *name;
+                    let current_span_id = *span_id;
+
+                    if let Some(span) = spans.iter_mut().find(|s| s.id == current_span_id) {
+                        span.closing = Some(SpanToken {
+                            line: line_idx,
+                            col: lexer.span().start,
+                            text,
+                        });
+                    }
+
+                    if let Some(active) = active_spans.get_mut(&(TokenType::BlockSpan, *name)) {
+                        if let Some(pos) = active.iter().position(|id| *id == current_span_id) {
+                            active.remove(pos);
+                        }
+                    }
+
+                    if let Some(pos) = span_stack.iter().position(|id| *id == current_span_id) {
+                        span_stack.remove(pos);
+                    }
+
+                    if parent_stack.last() == Some(&current_span_id) {
+                        parent_stack.pop();
+                    }
 
                     let match_ = Match {
                         type_: TokenType::BlockSpan,
@@ -453,21 +615,11 @@ where
                         col: lexer.span().start,
                         closing: None,
                         stack_height: None,
-                        span_name: Some(current_name),
+                        span_name: Some(*name),
+                        span_id: Some(current_span_id),
                     };
                     current_line_matches.push(match_);
                     state = Normal;
-                    
-                    for i in (0..span_stack.len()).rev() {
-                        let span = &mut span_stack[i];
-                        if span.type_ == TokenType::BlockSpan 
-                           && span.name == current_name 
-                           && span.closing_line.is_none() {
-                            span.closing_line = Some(line_idx);
-                            span.closing_col = Some(lexer.span().start);
-                            break;
-                        }
-                    }
                 }
 
                 (_, Escape, false) => escaped_position = Some(lexer.span().end),
@@ -478,164 +630,69 @@ where
         matches_by_line.push(current_line_matches);
         state_by_line.push(state.clone());
     }
-    
-    // Post-process: mark valid span regions
-    for span in span_stack.iter().filter(|span| span.closing_line.is_some()) {
-        let start_line = span.opening_line;
-        let end_line = span.closing_line.unwrap();
-        
-        // For inline spans, only mark characters between opening and closing on the same line
+
+    for i in 0..spans.len() {
+        if let Some(parent_id) = spans[i].parent_id {
+            let child_id = spans[i].id;
+
+            if let Some(parent) = spans.iter_mut().find(|s| s.id == parent_id) {
+                parent.children.push(child_id);
+            }
+        }
+    }
+
+    for span in spans.iter().filter(|s| s.closing.is_some()) {
+        let start_line = span.opening.line;
+        let end_line = span.closing.as_ref().unwrap().line;
+
         if span.type_ == TokenType::InlineSpan && start_line == end_line {
             let line = start_line;
-            
-            let start_col;
-            if let Some(opening_match) = matches_by_line[line].iter().find(|m| 
-                m.col == span.opening_col && m.closing.is_some() && m.span_name == Some(span.name)
-            ) {
-                start_col = span.opening_col + opening_match.text.len();
-            } else {
-                start_col = span.opening_col + 1;
+            let start_col = span.opening.col + span.opening.text.len();
+            let end_col = span.closing.as_ref().unwrap().col;
+
+            if start_col >= end_col || start_col >= matches_by_line[line].len() {
+                continue;
             }
-            
-            let end_col = span.closing_col.unwrap();
-            
-            for col in start_col..end_col {
-                let already_marked = matches_by_line[line].iter().any(|m| m.col == col);
-                if !already_marked {
-                    matches_by_line[line].push(Match {
-                        type_: span.type_,
-                        text: "",
-                        col,
-                        closing: None,
-                        stack_height: None,
-                        span_name: Some(span.name),
-                    });
-                }
-            }
-        } 
-        // For block spans or multi-line inline spans, mark everything between start and end lines
-        else {
-            // Update all state lines to reflect the block span state
-            for line in start_line..end_line {
-                if line >= state_by_line.len() {
-                    continue;
-                }
-                
-                if let ParseState::Normal = state_by_line[line] {
-                    state_by_line[line] = ParseState::InBlockSpan {
-                        closing: if let Some(opening_match) = matches_by_line[start_line].iter().find(|m| 
-                            m.col == span.opening_col && m.closing.is_some() && m.span_name == Some(span.name)
-                        ) {
-                            if let Some(close) = opening_match.closing {
-                                close
-                            } else {
-                                ""
-                            }
-                        } else {
-                            ""
-                        },
-                        name: span.name,
-                    };
-                }
-            }
-            
-            // Now mark all positions inside the span
+
+            matches_by_line[line].push(Match {
+                type_: span.type_,
+                text: "",
+                col: start_col,
+                closing: None,
+                stack_height: None,
+                span_name: Some(span.name),
+                span_id: Some(span.id),
+            });
+        } else {
             for line in start_line..=end_line {
-                if line >= lines.len() || line >= matches_by_line.len() {
+                if line >= matches_by_line.len() {
                     continue;
                 }
-                
-                let (start_col, end_col) = match line {
-                    l if l == start_line => {
-                        let start_col;
-                        if let Some(opening_match) = matches_by_line[line].iter().find(|m| 
-                            m.col == span.opening_col && m.closing.is_some() && m.span_name == Some(span.name)
-                        ) {
-                            start_col = span.opening_col + opening_match.text.len();
-                        } else {
-                            start_col = span.opening_col + 1;
-                        }
-                        (start_col, lines[line].len())
-                    },
-                    l if l == end_line => (0, span.closing_col.unwrap()),
-                    _ => (0, lines[line].len()),
-                };
-                
-                // Mark entire line if it's a middle line in a block span
-                if span.type_ == TokenType::BlockSpan && line > start_line && line < end_line {
-                    matches_by_line[line].push(Match {
-                        type_: span.type_,
-                        text: "",
-                        col: 0,
-                        closing: None,
-                        stack_height: None,
-                        span_name: Some(span.name),
-                    });
+
+                if (line == start_line
+                    && matches_by_line[line]
+                        .iter()
+                        .any(|m| m.span_id == Some(span.id) && m.closing.is_some()))
+                    || (line == end_line
+                        && matches_by_line[line]
+                            .iter()
+                            .any(|m| m.span_id == Some(span.id) && m.closing.is_none()))
+                {
                     continue;
                 }
-                
-                // Don't process if the indices are invalid
-                if start_col >= end_col || (lines[line].len() > 0 && start_col >= lines[line].len()) {
-                    continue;
-                }
-                
-                // For actual content, mark each position
-                let max_col = if lines[line].is_empty() { 1 } else { end_col };
-                for col in start_col..max_col {
-                    let already_marked = matches_by_line[line].iter().any(|m| m.col == col);
-                    if !already_marked {
-                        matches_by_line[line].push(Match {
-                            type_: span.type_,
-                            text: "",
-                            col,
-                            closing: None,
-                            stack_height: None,
-                            span_name: Some(span.name),
-                        });
-                    }
-                }
-                
-                // For empty lines in block spans, ensure we add at least one marker
-                if lines[line].is_empty() && !matches_by_line[line].iter().any(|m| m.span_name == Some(span.name)) {
-                    matches_by_line[line].push(Match {
-                        type_: span.type_,
-                        text: "",
-                        col: 0,
-                        closing: None,
-                        stack_height: None,
-                        span_name: Some(span.name),
-                    });
-                }
+
+                matches_by_line[line].push(Match {
+                    type_: span.type_,
+                    text: "",
+                    col: 0,
+                    closing: None,
+                    stack_height: None,
+                    span_name: Some(span.name),
+                    span_id: Some(span.id),
+                });
             }
         }
     }
 
-    // Also need to handle unclosed spans based on parser state
-    // For any line that ends with a block span state, mark the next line as in that span
-    let mut line_idx = 0;
-    while line_idx < state_by_line.len() {
-        if let ParseState::InBlockSpan { name, .. } = &state_by_line[line_idx] {
-            // If we're in a block span at end of a line, but there's no closing token,
-            // then we need to ensure the span continues
-            let has_closing_on_line = matches_by_line[line_idx].iter().any(|m| m.span_name == Some(*name) && m.closing.is_none());
-            if !has_closing_on_line && line_idx + 1 < matches_by_line.len() {
-                // Add a span marker to the next line if needed
-                let next_line = line_idx + 1;
-                let has_span_marker = matches_by_line[next_line].iter().any(|m| m.span_name == Some(*name));
-                if !has_span_marker {
-                    matches_by_line[next_line].push(Match {
-                        type_: TokenType::BlockSpan,
-                        text: "",
-                        col: 0,
-                        closing: None,
-                        stack_height: None,
-                        span_name: Some(*name),
-                    });
-                }
-            }
-        }
-        line_idx += 1;
-    }
-
-    (matches_by_line, state_by_line)
+    (matches_by_line, state_by_line, spans)
 }
