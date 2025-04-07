@@ -1,0 +1,29 @@
+thread 'rustc' panicked at /rustc/5e17a2a91dd7dbefd8b4a1087c2e42257457deeb/compiler/rustc_query_system/src/dep_graph/serialized.rs:260:21:
+Error: A dep graph node (trait_impls_of) does not have an unique index. Running a clean build on a nightly compiler with `-Z incremental-verify-ich` can help narrow down the issue for reporting. A clean build may also work around the issue.
+
+                     DepNode: DepKind { variant: 169 }(8b7fb098a05ab0cb-6649a2f8bc717d0)
+stack backtrace:
+   0:     0x7f50bbcbfc25 - std::backtrace::Backtrace::create::h1b16683be3c7ac94
+   1:     0x7f50ba07f265 - std::backtrace::Backtrace::force_capture::h280daa1e5b184558
+   2:     0x7f50b90f3441 - std[9a3aa6eed4108a26]::panicking::update_hook::<alloc[ad9ed0bc969d71bc]::boxed::Box<rustc_driver_impl[7f6c2565614846f1]::install_ice_hook::{closure#1}>>::{closure#0}
+   3:     0x7f50ba098cc3 - std::panicking::rust_panic_with_hook::h6a83782672b5344e
+   4:     0x7f50ba0989ba - std::panicking::begin_panic_handler::{{closure}}::h56a0991288b6aeda
+   5:     0x7f50ba094fd9 - std::sys::backtrace::__rust_end_short_backtrace::he7101ce7588e4db0
+   6:     0x7f50ba09867d - __rustc[20942968122575a1]::rust_begin_unwind
+   7:     0x7f50b6a97d00 - core::panicking::panic_fmt::h6e467d5bdebd89ad
+   8:     0x7f50bb6557a2 - rustc_incremental[f763437c688306f9]::persist::load::setup_dep_graph
+   9:     0x7f50bb97b5b6 - rustc_interface[a17fea9be7f3966a]::interface::run_compiler::<(), rustc_driver_impl[7f6c2565614846f1]::run_compiler::{closure#0}>::{closure#1}
+  10:     0x7f50b9109d6d - <rayon_core[cbae5a2e764db6]::job::StackJob<rayon_core[cbae5a2e764db6]::latch::LatchRef<rayon_core[cbae5a2e764db6]::latch::LockLatch>, <rayon_core[cbae5a2e764db6]::registry::Registry>::in_worker_cold<<rayon_core[cbae5a2e764db6]::thread_pool::ThreadPool>::install<rustc_interface[a17fea9be7f3966a]::util::run_in_thread_pool_with_globals<rustc_interface[a17fea9be7f3966a]::interface::run_compiler<(), rustc_driver_impl[7f6c2565614846f1]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#3}::{closure#0}::{closure#1}::{closure#0}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()> as rayon_core[cbae5a2e764db6]::job::Job>::execute
+  11:     0x7f50b8bc275e - <rayon_core[cbae5a2e764db6]::registry::WorkerThread>::wait_until_cold
+  12:     0x7f50b8bc009b - <rayon_core[cbae5a2e764db6]::registry::ThreadBuilder>::run
+  13:     0x7f50b90fa8ca - <<crossbeam_utils[6c53c774fa18e954]::thread::ScopedThreadBuilder>::spawn<<rayon_core[cbae5a2e764db6]::ThreadPoolBuilder>::build_scoped<rustc_interface[a17fea9be7f3966a]::util::run_in_thread_pool_with_globals<rustc_interface[a17fea9be7f3966a]::interface::run_compiler<(), rustc_driver_impl[7f6c2565614846f1]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#3}::{closure#0}::{closure#0}, rustc_interface[a17fea9be7f3966a]::util::run_in_thread_pool_with_globals<rustc_interface[a17fea9be7f3966a]::interface::run_compiler<(), rustc_driver_impl[7f6c2565614846f1]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#3}::{closure#0}::{closure#1}, ()>::{closure#0}::{closure#0}::{closure#0}, ()>::{closure#0} as core[8b7fb098a05ab0cb]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  14:     0x7f50b90e739e - std[9a3aa6eed4108a26]::sys::backtrace::__rust_begin_short_backtrace::<alloc[ad9ed0bc969d71bc]::boxed::Box<dyn core[8b7fb098a05ab0cb]::ops::function::FnOnce<(), Output = ()> + core[8b7fb098a05ab0cb]::marker::Send>, ()>
+  15:     0x7f50b90fa38a - <<std[9a3aa6eed4108a26]::thread::Builder>::spawn_unchecked_<alloc[ad9ed0bc969d71bc]::boxed::Box<dyn core[8b7fb098a05ab0cb]::ops::function::FnOnce<(), Output = ()> + core[8b7fb098a05ab0cb]::marker::Send>, ()>::{closure#1} as core[8b7fb098a05ab0cb]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  16:     0x7f50bb7715eb - std::sys::pal::unix::thread::Thread::new::thread_start::hef2a5b8ce9482556
+  17:     0x7f50b567dba8 - start_thread
+  18:     0x7f50b5701b8c - __GI___clone3
+  19:                0x0 - <unknown>
+
+
+rustc version: 1.88.0-nightly (5e17a2a91 2025-04-05)
+platform: x86_64-unknown-linux-gnu
