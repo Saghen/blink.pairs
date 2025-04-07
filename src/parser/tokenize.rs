@@ -40,7 +40,7 @@ where
                 _ => Some(Simd::<u8, N>::splat(c)),
             }
         })
-        .collect::<Box<[_]>>();
+        .collect::<Vec<_>>();
 
     //
 
