@@ -13,9 +13,18 @@ harness = false
 
 [dependencies]
 matcher-macros = { path = "matcher" }
-
 itertools = "0.14.0"
 mlua = { version = "0.10.2", features = ["module", "luajit"] }
 
 [dev-dependencies]
 criterion = "0.5.1"
+
+[profile.bench]
+codegen-units = 1
+lto = true
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
