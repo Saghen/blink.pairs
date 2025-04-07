@@ -1,6 +1,6 @@
 # Blink Pairs (blink.pairs)
 
-Rainbow highlighting and auto-pairs for Neovim. Uses a custom parser internally which takes ~4ms to parse a 400k character file, and ~0.2ms for subsequent incremental updates. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
+Rainbow highlighting and auto-pairs for Neovim. Uses a custom parser internally which takes ~2ms to parse a 400k character file, and ~0.15ms for subsequent incremental updates. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
 
 ## Behavior
 
