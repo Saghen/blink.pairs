@@ -29,7 +29,7 @@ function M.setup(config)
       -- Highlight matches
       for i, match in ipairs(pair) do
         vim.api.nvim_buf_set_extmark(buf, ns, match.line, match.col, {
-          end_col = match.col + match[i]:len(),
+          end_col = match.col + (match[i] or match[1]):len(),
           hl_group = config.matchparen.group,
           hl_mode = 'combine',
           priority = config.matchparen.priority,
