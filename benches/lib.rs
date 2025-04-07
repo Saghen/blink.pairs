@@ -11,11 +11,11 @@ fn criterion_benches(c: &mut Criterion) {
     let rust_lines = rust_text.lines().collect::<Box<[_]>>();
 
     c.bench_function("tokenize simd - c", |b| {
-        b.iter(|| tokenize(black_box(c_text), black_box(C::TOKENS)).for_each(|_| {}))
+        b.iter(|| tokenize::<64>(black_box(c_text), black_box(C::TOKENS)).for_each(|_| {}))
     });
 
     c.bench_function("tokenize simd - rust", |b| {
-        b.iter(|| tokenize(black_box(rust_text), black_box(Rust::TOKENS)).for_each(|_| {}))
+        b.iter(|| tokenize::<64>(black_box(rust_text), black_box(Rust::TOKENS)).for_each(|_| {}))
     });
 
     c.bench_function("parse simd - c", |b| {

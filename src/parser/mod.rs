@@ -1,4 +1,4 @@
-pub type SimdVec = std::simd::Simd<u8, 64>;
+pub type SimdVec = std::simd::Simd<u8, 16>;
 
 pub mod languages;
 pub mod matcher;

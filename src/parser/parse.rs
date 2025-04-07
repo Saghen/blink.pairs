@@ -35,7 +35,16 @@ where
     let mut escaped_col: Option<usize> = None;
 
     let text = lines.join("\n");
-    let mut tokens = tokenize(&text, matcher.tokens()).multipeek();
+
+    #[cfg(target_feature = "avx512f")]
+    let tokens = tokenize::<64>(&text, matcher.tokens());
+    #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
+    let tokens = tokenize::<32>(&text, matcher.tokens());
+    #[cfg(not(any(target_feature = "avx2", target_feature = "avx512f")))]
+    let mut tokens = tokenize::<16>(&text, matcher.tokens());
+
+    let mut tokens = tokens.multipeek();
+
     while let Some(token) = tokens.next() {
         // New line
         if matches!(token.byte, b'\n') {
