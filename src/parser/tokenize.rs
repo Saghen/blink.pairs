@@ -18,12 +18,6 @@ impl CharPos {
 /// returning the byte and column position of each token. You can get the row by counting
 /// every incoming `\n` token
 pub fn tokenize<'s, 't>(text: &'s str, tokens: &'t [u8]) -> impl Iterator<Item = CharPos> + 's {
-    // Tokens
-    let none = SimdVec::splat(0);
-
-    let new_line = SimdVec::splat(b'\n');
-    let escape = SimdVec::splat(b'\\');
-
     let tokens_to_find = tokens
         .iter()
         .flat_map(|&c| {
@@ -31,10 +25,10 @@ pub fn tokenize<'s, 't>(text: &'s str, tokens: &'t [u8]) -> impl Iterator<Item =
                 // Enabled by default, ignore
                 0 | b'\n' | b'\\' => None,
 
-                _ => Some(SimdVec::splat(c)),
+                _ => Some(c),
             }
         })
-        .collect::<Vec<_>>();
+        .collect::<Box<[_]>>();
 
     //
 
@@ -47,12 +41,21 @@ pub fn tokenize<'s, 't>(text: &'s str, tokens: &'t [u8]) -> impl Iterator<Item =
         .map(SimdVec::load_or_default)
         .enumerate()
         .flat_map(move |(chunk_idx, chunk)| {
-            let mut tokens = none;
-            tokens = tokens | new_line.simd_eq(chunk).select(new_line, none);
-            tokens = tokens | escape.simd_eq(chunk).select(escape, none);
+            let mut tokens = SimdVec::splat(0);
+            tokens = tokens
+                | SimdVec::splat(b'\n')
+                    .simd_eq(chunk)
+                    .select(SimdVec::splat(b'\n'), SimdVec::splat(0));
+            tokens = tokens
+                | SimdVec::splat(b'\\')
+                    .simd_eq(chunk)
+                    .select(SimdVec::splat(b'\\'), SimdVec::splat(0));
 
-            for char in tokens_to_find.iter() {
-                tokens = tokens | char.simd_eq(chunk).select(*char, none);
+            for &char in tokens_to_find.iter() {
+                tokens = tokens
+                    | SimdVec::splat(char)
+                        .simd_eq(chunk)
+                        .select(SimdVec::splat(char), SimdVec::splat(0));
             }
 
             // Apply parsed tokens
