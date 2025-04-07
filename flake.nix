@@ -4,6 +4,8 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    fenix.url = "github:nix-community/fenix";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs@{ flake-parts, nixpkgs, ... }:
@@ -12,6 +14,12 @@
         [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
 
       perSystem = { self, config, self', inputs', pkgs, system, lib, ... }: {
+        # use fenix overlay
+        _module.args.pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ inputs.fenix.overlays.default ];
+        };
+
         # define the packages provided by this flake
         packages = let
           fs = lib.fileset;
@@ -31,7 +39,13 @@
           nvimFs = fs.difference ./. (fs.unions [ nixFs rustFs ]);
           version = "0.2.0";
         in {
-          blink-pairs-lib = pkgs.rustPlatform.buildRustPackage {
+          blink-pairs-lib = let
+            inherit (inputs.fenix.packages.${system}.minimal) toolchain;
+            rustPlatform = pkgs.makeRustPlatform {
+              cargo = toolchain;
+              rustc = toolchain;
+            };
+          in rustPlatform.buildRustPackage {
             pname = "blink-pairs-lib";
             inherit version;
             src = fs.toSource {
