@@ -23,6 +23,7 @@ pub trait Matcher {
         tokens: &mut MultiPeek<I>,
         state: State,
         token: CharPos,
+        escaped: bool,
     ) -> State
     where
         I: Iterator<Item = CharPos>;

@@ -76,6 +76,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(open_arm.build());
 
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
+            .ignore_escaped()
             .input_state(quote! { State::InBlockString(#open) })
             .body(quote! {
                 matches.push(Match::new(
@@ -122,6 +123,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
         // Closing string
         let close_arm = MatchArm::builder(delim.to_string(), max_lookahead)
+            .ignore_escaped()
             .input_state(quote! { State::InString(#delim) })
             .body(quote! {
                 matches.push(Match::new(Kind::Closing, Token::String(#delim), token.col));
@@ -137,6 +139,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
     // 5. Character literal patterns
     for delim in &def.chars {
+        // TODO: handle escaped
         let delim_byte = delim.as_bytes()[0];
         let arm = MatchArm::builder(delim.to_string(), max_lookahead)
             .non_adjacent()
@@ -215,6 +218,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
                 tokens: &mut MultiPeek<I>,
                 state: State,
                 token: CharPos,
+                escaped: bool,
             ) -> State
             where
                 I: Iterator<Item = CharPos>,

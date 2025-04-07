@@ -17,6 +17,8 @@ pub fn create_match_header(lookahead: usize) -> TokenStream2 {
         pattern_str.push_str(&format!(", token_{}_byte", i + 1));
     }
 
+    pattern_str.push_str(", escaped");
+
     pattern_str.push(')');
 
     pattern_str.parse().unwrap()
@@ -41,6 +43,7 @@ pub struct MatchArm {
     lookahead: usize,
     adjacent: bool,
     _input_state: TokenStream2,
+    _ignore_escaped: bool,
     _if_condition: Option<TokenStream2>,
     _body: Option<TokenStream2>,
 }
@@ -53,6 +56,7 @@ impl MatchArm {
             lookahead,
             adjacent,
             _input_state: quote! { State::Normal },
+            _ignore_escaped: false,
             _if_condition: None,
             _body: None,
         }
@@ -65,6 +69,11 @@ impl MatchArm {
 
     pub fn non_adjacent(mut self) -> Self {
         self.adjacent = false;
+        self
+    }
+
+    pub fn ignore_escaped(mut self) -> Self {
+        self._ignore_escaped = true;
         self
     }
 
@@ -99,6 +108,13 @@ impl MatchArm {
 
         // Add `_` for each lookahead token we didn't use
         for _ in 0..(self.lookahead - (self.pattern.len() - 1)) {
+            condition.push_str(", _");
+        }
+
+        // Add escaped condition
+        if self._ignore_escaped {
+            condition.push_str(", false");
+        } else {
             condition.push_str(", _");
         }
 
