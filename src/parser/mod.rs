@@ -31,7 +31,7 @@ pub fn parse_filetype(
         "javascript" => Some(parse(lines, initial_state, languages::JavaScript {})),
         "json" => Some(parse(lines, initial_state, languages::Json {})),
         "kotlin" => Some(parse(lines, initial_state, languages::Kotlin {})),
-        "latex" => Some(parse(lines, initial_state, languages::Latex {})),
+        "latex" | "tex" | "bib" => Some(parse(lines, initial_state, languages::Latex {})),
         "lean" => Some(parse(lines, initial_state, languages::Lean {})),
         "lua" => Some(parse(lines, initial_state, languages::Lua {})),
         "markdown" => Some(parse(lines, initial_state, languages::Markdown {})),
