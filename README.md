@@ -36,7 +36,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
   -- OR build from source
   build = 'cargo build --release',
   -- OR build from source with nix
-  build = 'nix build .#build-plugin',
+  build = 'nix run .#build-plugin',
 
   --- @module 'blink.pairs'
   --- @type blink.pairs.Config
