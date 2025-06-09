@@ -18,7 +18,7 @@ pub enum State {
 
 /// Given a matcher, runs the tokenizer on the lines and keeps track
 /// of the state and matches for each line
-pub fn parse<M: Matcher>(
+pub fn parse<M>(
     lines: &[&str],
     initial_state: State,
     mut matcher: M,
@@ -101,6 +101,12 @@ mod tests {
             .0
     }
 
+    fn parse_tex(lines: &str) -> Vec<Vec<Match>> {
+        parse_filetype("tex", &lines.split('\n').collect::<Vec<_>>(), State::Normal)
+            .unwrap()
+            .0
+    }
+
     #[test]
     fn test_parse() {
         assert_eq!(
@@ -127,6 +133,20 @@ mod tests {
                     Match::block_comment("*/", 14)
                 ],
                 vec![Match::delimiter('}', 0, Some(0))]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_tex() {
+        assert_eq!(
+            parse_tex("test 90\\% ( and b )\n%abc"),
+            vec![
+                vec![
+                    Match::delimiter('(', 10, Some(0)),
+                    Match::delimiter(')', 18, Some(0))
+                ],
+                vec![Match::line_comment("%", 0)]
             ]
         );
     }

@@ -15,6 +15,7 @@ harness = false
 matcher-macros = { path = "matcher" }
 itertools = "0.14.0"
 mlua = { version = "0.10.2", features = ["module", "luajit"] }
+pretty = "0.12.4"
 
 [dev-dependencies]
 criterion = "0.5.1"

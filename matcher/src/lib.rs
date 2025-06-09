@@ -120,14 +120,16 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
     // 4. Line comment patterns
     for comment in &def.line_comments {
-        let arm = MatchArm::builder(comment.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::line_comment(#comment, token.col));
-            // Skip tokens based on length of pattern
-            for _ in 1..#comment.len() {
-                tokens.next();
-            }
-            State::InLineComment
-        });
+        let arm = MatchArm::builder(comment.to_string(), max_lookahead)
+            .ignore_escaped()
+            .body(quote! {
+                matches.push(Match::line_comment(#comment, token.col));
+                // Skip tokens based on length of pattern
+                for _ in 1..#comment.len() {
+                    tokens.next();
+                }
+                State::InLineComment
+            });
         // TODO: skip tokens based on length of pattern
         match_arms.push(arm.build());
     }
