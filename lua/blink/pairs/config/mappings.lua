@@ -66,6 +66,7 @@ local mappings = {
           end,
           filetypes = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
         },
+        { "`", "'", filetypes = { "bib", "latex", "tex" } },
         { '`', enter = false, space = false },
       },
       ['_'] = {
