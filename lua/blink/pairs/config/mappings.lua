@@ -38,6 +38,7 @@ local mappings = {
               -- todo: replace with spans or treesitter
               -- todo: doesn't work for quote at cursor here <'a, |b>
               and (vim.bo.filetype ~= 'rust' or (char ~= '&' and char ~= '<'))
+              and not vim.list_contains({ 'bib', 'tex', 'plaintex' }, vim.bo.filetype)
           end,
         },
       },
