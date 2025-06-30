@@ -10,7 +10,6 @@ local mappings = {
     enabled = true,
     disabled_filetypes = {},
     pairs = {
-      -- TODO: the `when` clauses should receive a stdlib
       ['!'] = { { '<!--', '-->', filetypes = { 'html', 'markdown' } } },
       ['('] = ')',
       ['['] = ']',
@@ -19,26 +18,20 @@ local mappings = {
         {
           "'''",
           "'''",
-          when = function()
-            local cursor = vim.api.nvim_win_get_cursor(0)
-            local line = vim.api.nvim_get_current_line()
-            return line:sub(cursor[2] - 1, cursor[2]) == "''"
-          end,
+          when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
           filetypes = { 'python' },
         },
         {
           "'",
           enter = false,
           space = false,
-          when = function()
-            local cursor = vim.api.nvim_win_get_cursor(0)
-            local char = vim.api.nvim_get_current_line():sub(cursor[2], cursor[2])
-            return not char:match('%w')
+          when = function(ctx)
+            return not ctx.char_under_cursor:match('%w')
               -- rust lifetimes
               -- todo: replace with spans or treesitter
               -- todo: doesn't work for quote at cursor here <'a, |b>
-              and (vim.bo.filetype ~= 'rust' or (char ~= '&' and char ~= '<'))
-              and not vim.list_contains({ 'bib', 'tex', 'plaintex' }, vim.bo.filetype)
+              and (ctx.ft ~= 'rust' or (ctx.char_under_cursor ~= '&' and ctx.char_under_cursor ~= '<'))
+              and not vim.list_contains({ 'bib', 'tex', 'plaintex' }, ctx.ft)
           end,
         },
       },
@@ -47,11 +40,7 @@ local mappings = {
         {
           '"""',
           '"""',
-          when = function()
-            local cursor = vim.api.nvim_win_get_cursor(0)
-            local line = vim.api.nvim_get_current_line()
-            return line:sub(cursor[2] - 1, cursor[2]) == '""'
-          end,
+          when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
           filetypes = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
         },
         { '"', enter = false, space = false },
@@ -60,11 +49,7 @@ local mappings = {
         {
           '```',
           '```',
-          when = function()
-            local cursor = vim.api.nvim_win_get_cursor(0)
-            local line = vim.api.nvim_get_current_line()
-            return line:sub(cursor[2] - 1, cursor[2]) == '``'
-          end,
+          when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
           filetypes = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
         },
         { '`', "'", filetypes = { 'bib', 'tex', 'plaintex' } },
@@ -73,15 +58,11 @@ local mappings = {
       ['_'] = {
         {
           '_',
-          when = function()
+          when = function(ctx)
             local rule = require('blink.pairs.rule')
 
             if rule.is_in_span('math') then return false end
-            if vim.bo.filetype == 'markdown' then
-              local cursor = vim.api.nvim_win_get_cursor(0)
-              local char = vim.api.nvim_get_current_line():sub(cursor[2], cursor[2])
-              return not char:match('%w')
-            end
+            if ctx.ft == 'markdown' then return not ctx.char_under_cursor:match('%w') end
 
             return true
           end,
