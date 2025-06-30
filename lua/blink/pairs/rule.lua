@@ -2,10 +2,10 @@
 --- @field priority number
 --- @field opening string
 --- @field closing string
---- @field when fun(): boolean
---- @field enter fun(): boolean
---- @field backspace fun(): boolean
---- @field space fun(): boolean
+--- @field when fun(ctx: blink.pairs.Context): boolean
+--- @field enter fun(ctx: blink.pairs.Context): boolean
+--- @field backspace fun(ctx: blink.pairs.Context): boolean
+--- @field space fun(ctx: blink.pairs.Context): boolean
 
 --- @alias blink.pairs.RulesByKey table<string, blink.pairs.Rule[]>
 
@@ -86,9 +86,9 @@ function M.rule_from_def(key, def)
     }
   end
 
-  local when = function()
+  local when = function(ctx)
     if def.filetypes ~= nil and not vim.tbl_contains(def.filetypes, vim.bo.filetype) then return false end
-    return def.when == nil or def.when()
+    return def.when == nil or def.when(ctx)
   end
 
   local closing = #def == 1 and def[1] or def[2]
@@ -117,25 +117,28 @@ function M.closing_keys_from_rule(key, rule)
 end
 
 --- Checks if the rule's conditions mark it as active
+--- @param ctx blink.pairs.Context
 --- @param rule blink.pairs.Rule
 --- @param mode? blink.pairs.Mode
 --- @return boolean
-function M.is_active(rule, mode) return rule.when() and (mode == nil or rule[mode]()) end
+function M.is_active(ctx, rule, mode) return rule.when(ctx) and (mode == nil or rule[mode]()) end
 
+--- @param ctx blink.pairs.Context
 --- @param rules blink.pairs.Rule[]
 --- @param mode? 'enter' | 'backspace' | 'space'
 --- @return blink.pairs.Rule?
-function M.get_active(rules, mode)
+function M.get_active(ctx, rules, mode)
   for _, rule in ipairs(rules) do
-    if M.is_active(rule, mode) then return rule end
+    if M.is_active(ctx, rule, mode) then return rule end
   end
 end
 
+--- @param ctx blink.pairs.Context
 --- @param rules blink.pairs.Rule[]
 --- @param mode? 'enter' | 'backspace' | 'space'
 --- @return blink.pairs.Rule[]
-function M.get_all_active(rules, mode)
-  return vim.tbl_filter(function(rule) return M.is_active(rule, mode) end, rules)
+function M.get_all_active(ctx, rules, mode)
+  return vim.tbl_filter(function(rule) return M.is_active(ctx, rule, mode) end, rules)
 end
 
 --- @param rules_by_key blink.pairs.RulesByKey
@@ -150,11 +153,12 @@ function M.get_all(rules_by_key)
 end
 
 --- Looks on either side of the cursor for existing pairs
+--- @param ctx blink.pairs.Context
 --- @param rules blink.pairs.Rule[] Must be sorted by priority
 --- @param mode? blink.pairs.Mode
 --- @return blink.pairs.Rule? rule Rule surrounding the cursor
 --- @return boolean? surrounding_space Whether there's a single space on either side of the cursor
-function M.get_surrounding(rules, mode)
+function M.get_surrounding(ctx, rules, mode)
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line()
 
@@ -164,7 +168,7 @@ function M.get_surrounding(rules, mode)
   local has_surrounding_space = before_cursor:sub(-1) == ' ' and after_cursor:sub(1, 1) == ' '
 
   for _, rule in ipairs(rules) do
-    if M.is_active(rule, mode) then
+    if M.is_active(ctx, rule, mode) then
       -- Special case for backspace and enter where we ignore surrounding spaces, and return whether they're there
       if (mode == 'backspace' or mode == 'enter') and has_surrounding_space then
         if
