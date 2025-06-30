@@ -1,13 +1,21 @@
 --- @class blink.pairs.Context
 --- @field ft string
+--- @field bufnr integer
 --- @field cursor { row: integer, col: integer }
 --- @field line string
 --- @field char_under_cursor string
+--- @field prev_non_ws_col integer
 --- @field treesitter blink.pairs.context.Treesitter
 local Context = {}
 ---@type table<string, fun(ctx: blink.pairs.Context): ...>
 Context.__field_constructors = {
   char_under_cursor = function(ctx) return ctx.line:sub(ctx.cursor.col, ctx.cursor.col) end,
+  prev_non_ws_col = function(ctx)
+    for i = ctx.cursor.col, 1, -1 do
+      if not ctx.line:sub(i, i):match('%s') then return i end
+    end
+    return 0
+  end,
 }
 Context.__mt = {
   __index = function(ctx, key)
@@ -82,6 +90,7 @@ function M.new()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local self = {
     ft = vim.bo.filetype,
+    bufnr = vim.api.nvim_get_current_buf(),
     cursor = { row = cursor[1], col = cursor[2] },
     line = vim.api.nvim_get_current_line(),
   }

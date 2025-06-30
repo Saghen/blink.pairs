@@ -26,12 +26,11 @@ local mappings = {
           enter = false,
           space = false,
           when = function(ctx)
-            return not ctx.char_under_cursor:match('%w')
-              -- rust lifetimes
-              -- todo: replace with spans or treesitter
-              -- todo: doesn't work for quote at cursor here <'a, |b>
-              and (ctx.ft ~= 'rust' or (ctx.char_under_cursor ~= '&' and ctx.char_under_cursor ~= '<'))
-              and not vim.list_contains({ 'bib', 'tex', 'plaintex' }, ctx.ft)
+            if vim.list_contains({ 'bib', 'tex', 'plaintex' }, ctx.ft) or ctx.char_under_cursor:match('%w') then
+              return false
+            end
+
+            return ctx.treesitter:matches_blacklist('singlequote').should_pair
           end,
         },
       },
