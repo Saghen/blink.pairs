@@ -68,6 +68,13 @@ local mappings = {
           filetypes = { 'markdown', 'typst' },
         },
       },
+      ['<'] = {
+        {
+          '<',
+          '>',
+          when = function(ctx) return ctx.treesitter:matches_whitelist('angle').should_pair end,
+        },
+      },
     },
   },
 }
