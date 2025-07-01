@@ -30,7 +30,7 @@ local mappings = {
               return false
             end
 
-            return ctx.treesitter:matches_blacklist('singlequote').should_pair
+            return ctx.treesitter:blacklist('singlequote').matches
           end,
         },
       },
@@ -72,7 +72,7 @@ local mappings = {
         {
           '<',
           '>',
-          when = function(ctx) return ctx.treesitter:matches_whitelist('angle').should_pair end,
+          when = function(ctx) return ctx.treesitter:whitelist('angle').matches end,
         },
       },
     },
