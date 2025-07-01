@@ -5,7 +5,7 @@
 --- @field line string
 --- @field char_under_cursor string
 --- @field prev_non_ws_col integer
---- @field treesitter blink.pairs.context.Treesitter
+--- @field ts blink.pairs.context.Treesitter
 local Context = {}
 ---@type table<string, fun(ctx: blink.pairs.Context): ...>
 Context.__field_constructors = {
@@ -94,7 +94,7 @@ function M.new()
     cursor = { row = cursor[1], col = cursor[2] },
     line = vim.api.nvim_get_current_line(),
   }
-  self.treesitter = setmetatable({ ctx = self }, require('blink.pairs.context.treesitter').__mt)
+  self.ts = setmetatable({ ctx = self }, require('blink.pairs.context.treesitter').__mt)
   return setmetatable(self, Context.__mt)
 end
 

@@ -26,11 +26,16 @@ local mappings = {
           enter = false,
           space = false,
           when = function(ctx)
-            if ctx.treesitter:is_any_lang_or_ft({ 'bibtex', 'latex' }) or ctx.char_under_cursor:match('%w') then
+            if
+              ctx.ts:is_langs({ 'bibtex', 'comment', 'latex', 'markdown', 'markdown_inline', 'typst' })
+              and ctx.char_under_cursor:match('%w')
+            then
               return false
             end
 
-            return ctx.treesitter:blacklist('singlequote').matches
+            -- TODO: disable inside strings?
+
+            return ctx.ts:blacklist('singlequote').matches
           end,
         },
       },
