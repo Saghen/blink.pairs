@@ -96,6 +96,7 @@ function mappings.validate_rules(key, defs)
       [2] = { def[2], { 'string', 'nil' } },
       priority = { def.priority, { 'number', 'nil' } },
       languages = { def.languages, { 'table', 'nil' } },
+      fallback_filetypes = { def.fallback_filetypes, { 'table', 'nil' } },
       when = { def.when, { 'function', 'nil' } },
       enter = { def.enter, { 'boolean', 'function', 'nil' } },
       backspace = { def.backspace, { 'boolean', 'function', 'nil' } },
