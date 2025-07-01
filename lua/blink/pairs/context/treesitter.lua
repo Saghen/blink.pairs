@@ -26,13 +26,14 @@ TS.__mt = {
 
 --- @class MatchResult
 --- @field ok boolean
---- @field should_pair boolean
+--- @field matches boolean
 
---- @param ctx blink.pairs.Context
+--- @param self blink.pairs.context.Treesitter
 --- @param query_name string
 --- @param capture_name string
---- @return { ok: boolean, matches: boolean }
-local function matches_capture(ctx, query_name, capture_name)
+--- @return MatchResult
+function TS:matches_capture(query_name, capture_name)
+  local ctx = self.ctx
   local key = ("matches_capture('%s', '%s')"):format(query_name, capture_name)
   return require('blink.pairs.context.utils').memoize(ctx, key, function()
     local ok, parser = pcall(vim.treesitter.get_parser, ctx.bufnr)
@@ -74,17 +75,18 @@ end
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
 --- @return MatchResult
-function TS:matches_whitelist(query_name)
-  local result = matches_capture(self.ctx, query_name, 'pair')
-  return { ok = result.ok, should_pair = result.ok and result.matches }
+function TS:whitelist(query_name)
+  local result = self:matches_capture(query_name, 'pair')
+  return { ok = result.ok, matches = result.ok and result.matches }
 end
 
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
 --- @return MatchResult
-function TS:matches_blacklist(query_name)
-  local result = matches_capture(self.ctx, query_name, 'nopair')
-  return { ok = result.ok, should_pair = not (result.ok and result.matches) }
+function TS:blacklist(query_name)
+  local result = self:matches_capture(query_name, 'nopair')
+  return { ok = result.ok, matches = not (result.ok and result.matches) }
+end
 
 --- @param self blink.pairs.context.Treesitter
 --- @param lang_or_ft string
