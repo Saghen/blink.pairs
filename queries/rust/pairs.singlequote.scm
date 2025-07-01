@@ -1,12 +1,14 @@
 [
   (parameters)
   (type_arguments)
-  (type_identifier)
   (type_parameters)
   (reference_type)
 ] @nopair.inside
 
-(reference_type) @nopair.inside_or_after
+[
+  (type_identifier)
+  (reference_type)
+] @nopair.inside_or_after
 
 ; incomplete struct definition
 ; struct Foo<
@@ -22,6 +24,4 @@
 
 ; emtpy function return type
 ; fn foo() -> {}
-(ERROR
-  .
-  "->" @nopair.after)
+"->" @nopair.after
