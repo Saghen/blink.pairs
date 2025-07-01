@@ -10,7 +10,7 @@ local mappings = {
     enabled = true,
     disabled_filetypes = {},
     pairs = {
-      ['!'] = { { '<!--', '-->', filetypes = { 'html', 'markdown' } } },
+      ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown' } } },
       ['('] = ')',
       ['['] = ']',
       ['{'] = '}',
@@ -19,14 +19,14 @@ local mappings = {
           "'''",
           "'''",
           when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
-          filetypes = { 'python' },
+          languages = { 'python' },
         },
         {
           "'",
           enter = false,
           space = false,
           when = function(ctx)
-            if vim.list_contains({ 'bib', 'tex', 'plaintex' }, ctx.ft) or ctx.char_under_cursor:match('%w') then
+            if ctx.treesitter:is_any_lang_or_ft({ 'bib', 'tex', 'plaintex' }) or ctx.char_under_cursor:match('%w') then
               return false
             end
 
@@ -35,12 +35,12 @@ local mappings = {
         },
       },
       ['"'] = {
-        { 'r#"', '"#', filetypes = { 'rust' }, priority = 100 },
+        { 'r#"', '"#', languages = { 'rust' }, priority = 100 },
         {
           '"""',
           '"""',
           when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
-          filetypes = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
+          languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
         },
         { '"', enter = false, space = false },
       },
@@ -49,9 +49,9 @@ local mappings = {
           '```',
           '```',
           when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
-          filetypes = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
+          languages = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
         },
-        { '`', "'", filetypes = { 'bib', 'tex', 'plaintex' } },
+        { '`', "'", languages = { 'bib', 'tex', 'plaintex' } },
         { '`', enter = false, space = false },
       },
       ['_'] = {
@@ -61,11 +61,11 @@ local mappings = {
             local rule = require('blink.pairs.rule')
 
             if rule.is_in_span('math') then return false end
-            if ctx.ft == 'markdown' then return not ctx.char_under_cursor:match('%w') end
+            if ctx.treesitter:is_lang_or_ft('markdown') then return not ctx.char_under_cursor:match('%w') end
 
             return true
           end,
-          filetypes = { 'markdown', 'typst' },
+          languages = { 'markdown', 'typst' },
         },
       },
       ['<'] = {
@@ -101,7 +101,7 @@ function mappings.validate_rules(key, defs)
       [1] = { def[1], 'string' },
       [2] = { def[2], { 'string', 'nil' } },
       priority = { def.priority, { 'number', 'nil' } },
-      filetypes = { def.filetypes, { 'table', 'nil' } },
+      languages = { def.languages, { 'table', 'nil' } },
       when = { def.when, { 'function', 'nil' } },
       enter = { def.enter, { 'boolean', 'function', 'nil' } },
       backspace = { def.backspace, { 'boolean', 'function', 'nil' } },
