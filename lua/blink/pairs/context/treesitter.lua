@@ -24,14 +24,14 @@ TS.__mt = {
   end,
 }
 
---- @class MatchResult
+--- @class blink.pairs.context.MatchResult
 --- @field ok boolean
 --- @field matches boolean
 
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
 --- @param capture_name string
---- @return MatchResult
+--- @return blink.pairs.context.MatchResult
 function TS:matches_capture(query_name, capture_name)
   local ctx = self.ctx
   local key = ("matches_capture('%s', '%s')"):format(query_name, capture_name)
@@ -76,7 +76,7 @@ end
 
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
---- @return MatchResult
+--- @return blink.pairs.context.MatchResult
 function TS:whitelist(query_name)
   local result = self:matches_capture(query_name, 'pair')
   return { ok = result.ok, matches = result.ok and result.matches }
@@ -84,7 +84,7 @@ end
 
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
---- @return MatchResult
+--- @return blink.pairs.context.MatchResult
 function TS:blacklist(query_name)
   local result = self:matches_capture(query_name, 'nopair')
   return { ok = result.ok, matches = not (result.ok and result.matches) }
