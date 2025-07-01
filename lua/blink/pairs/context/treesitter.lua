@@ -1,7 +1,28 @@
 --- @class blink.pairs.context.Treesitter
 --- @field ctx blink.pairs.Context
+--- @field lang string
 local TS = {}
-TS.__mt = { __index = TS }
+---@type table<string, fun(ts: blink.pairs.context.Treesitter): ...>
+TS.__field_constructors = {
+  lang = function(ts)
+    local ctx = ts.ctx
+    local ok, parser = pcall(vim.treesitter.get_parser, ctx.bufnr)
+    if not ok or not parser then return vim.treesitter.language.get_lang(ctx.ft) end
+    local row, col = ctx.cursor.row - 1, ctx.cursor.col
+    return parser:language_for_range({ row, col, row, col + 1 }):lang()
+  end,
+}
+TS.__mt = {
+  __index = function(ts, key)
+    if TS[key] ~= nil then
+      return TS[key]
+    elseif TS.__field_constructors[key] ~= nil then
+      local value = TS.__field_constructors[key](ts)
+      rawset(ts, key, value)
+      return value
+    end
+  end,
+}
 
 --- @class MatchResult
 --- @field ok boolean
@@ -64,6 +85,17 @@ end
 function TS:matches_blacklist(query_name)
   local result = matches_capture(self.ctx, query_name, 'nopair')
   return { ok = result.ok, should_pair = not (result.ok and result.matches) }
+
+--- @param self blink.pairs.context.Treesitter
+--- @param lang_or_ft string
+function TS:is_lang_or_ft(lang_or_ft)
+  return lang_or_ft == self.lang or vim.treesitter.language.get_lang(lang_or_ft) == self.lang
+end
+
+--- @param self blink.pairs.context.Treesitter
+--- @param langs_or_fts string[]
+function TS:is_any_lang_or_ft(langs_or_fts)
+  return vim.iter(langs_or_fts):any(function(lang_or_ft) return self:is_lang_or_ft(lang_or_ft) end)
 end
 
 return TS

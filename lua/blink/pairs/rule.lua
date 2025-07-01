@@ -86,8 +86,9 @@ function M.rule_from_def(key, def)
     }
   end
 
+  --- @param ctx blink.pairs.Context
   local when = function(ctx)
-    if def.filetypes ~= nil and not vim.tbl_contains(def.filetypes, vim.bo.filetype) then return false end
+    if def.languages ~= nil and not ctx.treesitter:is_any_lang_or_ft(def.languages) then return false end
     return def.when == nil or def.when(ctx)
   end
 
