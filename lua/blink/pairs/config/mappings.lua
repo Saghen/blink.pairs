@@ -10,17 +10,12 @@ local mappings = {
     enabled = true,
     disabled_filetypes = {},
     pairs = {
-      ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown' } } },
+      ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown', 'markdown_inline' } } },
       ['('] = ')',
       ['['] = ']',
       ['{'] = '}',
       ["'"] = {
-        {
-          "'''",
-          "'''",
-          when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
-          languages = { 'python' },
-        },
+        { "'''", when = function(ctx) return ctx:text_before_cursor(2) == "''" end, languages = { 'python' } },
         {
           "'",
           enter = false,
@@ -43,7 +38,6 @@ local mappings = {
         { 'r#"', '"#', languages = { 'rust' }, priority = 100 },
         {
           '"""',
-          '"""',
           when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
           languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
         },
@@ -52,9 +46,8 @@ local mappings = {
       ['`'] = {
         {
           '```',
-          '```',
           when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
-          languages = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
+          languages = { 'markdown', 'markdown_inline', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
         },
         { '`', "'", languages = { 'bibtex', 'latex' } },
         { '`', enter = false, space = false },
@@ -63,23 +56,19 @@ local mappings = {
         {
           '_',
           when = function(ctx)
-            local rule = require('blink.pairs.rule')
-
-            if rule.is_in_span('math') then return false end
-            if ctx.treesitter.lang == 'markdown' then return not ctx.char_under_cursor:match('%w') end
-
-            return true
+            if ctx.char_under_cursor:match('%w') then return false end
+            return ctx.ts:blacklist('underscore').matches
           end,
-          languages = { 'markdown', 'typst' },
+          languages = { 'typst' },
         },
+      },
+      ['*'] = {
+        { '*', when = function(ctx) return ctx.ts:blacklist('asterisk').matches end, languages = { 'typst' } },
       },
       ['<'] = {
-        {
-          '<',
-          '>',
-          when = function(ctx) return ctx.treesitter:whitelist('angle').matches end,
-        },
+        { '<', '>', when = function(ctx) return ctx.ts:whitelist('angle').matches end, languages = { 'rust' } },
       },
+      ['$'] = { { '$', languages = { 'markdown', 'markdown_inline', 'typst', 'latex' } } },
     },
   },
 }
