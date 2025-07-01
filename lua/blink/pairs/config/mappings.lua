@@ -26,7 +26,7 @@ local mappings = {
           enter = false,
           space = false,
           when = function(ctx)
-            if ctx.treesitter:is_any_lang_or_ft({ 'bib', 'tex', 'plaintex' }) or ctx.char_under_cursor:match('%w') then
+            if ctx.treesitter:is_any_lang_or_ft({ 'bibtex', 'latex' }) or ctx.char_under_cursor:match('%w') then
               return false
             end
 
@@ -51,7 +51,7 @@ local mappings = {
           when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
           languages = { 'markdown', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
         },
-        { '`', "'", languages = { 'bib', 'tex', 'plaintex' } },
+        { '`', "'", languages = { 'bibtex', 'latex' } },
         { '`', enter = false, space = false },
       },
       ['_'] = {
@@ -61,7 +61,7 @@ local mappings = {
             local rule = require('blink.pairs.rule')
 
             if rule.is_in_span('math') then return false end
-            if ctx.treesitter:is_lang_or_ft('markdown') then return not ctx.char_under_cursor:match('%w') end
+            if ctx.treesitter.lang == 'markdown' then return not ctx.char_under_cursor:match('%w') end
 
             return true
           end,
