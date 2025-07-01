@@ -1,13 +1,13 @@
 --- @class blink.pairs.context.Treesitter
 --- @field ctx blink.pairs.Context
---- @field lang string
+--- @field lang string?
 local TS = {}
 ---@type table<string, fun(ts: blink.pairs.context.Treesitter): ...>
 TS.__field_constructors = {
   lang = function(ts)
     local ctx = ts.ctx
     local ok, parser = pcall(vim.treesitter.get_parser, ctx.bufnr)
-    if not ok or not parser then return vim.treesitter.language.get_lang(ctx.ft) end
+    if not ok or not parser then return end
     local row, col = ctx.cursor.row - 1, ctx.cursor.col
     return parser:language_for_range({ row, col, row, col }):lang()
   end,
@@ -90,16 +90,15 @@ function TS:blacklist(query_name)
   return { ok = result.ok, matches = not (result.ok and result.matches) }
 end
 
---- @param self blink.pairs.context.Treesitter
---- @param lang_or_ft string
-function TS:is_lang_or_ft(lang_or_ft)
-  return lang_or_ft == self.lang or vim.treesitter.language.get_lang(lang_or_ft) == self.lang
-end
+--- @class blink.pairs.context.treesitter.IsLangsOpts
+--- @field fallback_filetypes string[]?
 
 --- @param self blink.pairs.context.Treesitter
---- @param langs_or_fts string[]
-function TS:is_any_lang_or_ft(langs_or_fts)
-  return vim.iter(langs_or_fts):any(function(lang_or_ft) return self:is_lang_or_ft(lang_or_ft) end)
+--- @param langs string[]
+--- @param opts blink.pairs.context.treesitter.IsLangsOpts?
+function TS:is_langs(langs, opts)
+  return (self.lang ~= nil and vim.tbl_contains(langs, self.lang))
+    or (opts and opts.fallback_filetypes and vim.tbl_contains(opts.fallback_filetypes, self.ctx.ft))
 end
 
 return TS
