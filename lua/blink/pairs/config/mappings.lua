@@ -15,31 +15,41 @@ local mappings = {
       ['['] = ']',
       ['{'] = '}',
       ["'"] = {
-        { "'''", when = function(ctx) return ctx:text_before_cursor(2) == "''" end, languages = { 'python' } },
+        {
+          "'''",
+          when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
+          languages = { 'python' },
+          fallback_filetypes = { 'python' },
+        },
         {
           "'",
           enter = false,
           space = false,
           when = function(ctx)
             if
-              ctx.ts:is_langs({ 'bibtex', 'comment', 'latex', 'markdown', 'markdown_inline', 'typst' })
-              and ctx.char_under_cursor:match('%w')
+              -- plaintex has no treesitter parser, so we can't disable this pair in math environments. thus disable this pair completely
+              ctx.ft == 'plaintex'
+              or ctx.ts:is_langs(
+                  { 'bibtex', 'comment', 'latex', 'markdown', 'markdown_inline', 'typst' },
+                  { fallback_filetypes = { 'bib', 'tex', 'markdown', 'typst' } }
+                )
+                and ctx.char_under_cursor:match('%w')
             then
               return false
             end
 
             -- TODO: disable inside strings?
-
             return ctx.ts:blacklist('singlequote').matches
           end,
         },
       },
       ['"'] = {
-        { 'r#"', '"#', languages = { 'rust' }, priority = 100 },
+        { 'r#"', '"#', languages = { 'rust' }, fallback_filetypes = { 'rust' }, priority = 100 },
         {
           '"""',
           when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
-          languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
+          languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala' },
+          fallback_filetypes = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
         },
         { '"', enter = false, space = false },
       },
@@ -47,9 +57,18 @@ local mappings = {
         {
           '```',
           when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
-          languages = { 'markdown', 'markdown_inline', 'vimwiki', 'rmarkdown', 'rmd', 'pandoc', 'quarto', 'typst' },
+          languages = { 'markdown', 'markdown_inline', 'typst' },
+          fallback_filetypes = {
+            'markdown',
+            'vimwiki',
+            'rmarkdown',
+            'rmd',
+            'pandoc',
+            'quarto',
+            'typst',
+          },
         },
-        { '`', "'", languages = { 'bibtex', 'latex' } },
+        { '`', "'", languages = { 'bibtex', 'latex' }, fallback_filetypes = { 'bib', 'tex', 'plaintex' } },
         { '`', enter = false, space = false },
       },
       ['_'] = {
@@ -60,15 +79,27 @@ local mappings = {
             return ctx.ts:blacklist('underscore').matches
           end,
           languages = { 'typst' },
+          fallback_filetypes = { 'typst' },
         },
       },
       ['*'] = {
-        { '*', when = function(ctx) return ctx.ts:blacklist('asterisk').matches end, languages = { 'typst' } },
+        {
+          '*',
+          when = function(ctx) return ctx.ts:blacklist('asterisk').matches end,
+          languages = { 'typst' },
+          fallback_filetypes = { 'typst' },
+        },
       },
       ['<'] = {
         { '<', '>', when = function(ctx) return ctx.ts:whitelist('angle').matches end, languages = { 'rust' } },
       },
-      ['$'] = { { '$', languages = { 'markdown', 'markdown_inline', 'typst', 'latex' } } },
+      ['$'] = {
+        {
+          '$',
+          languages = { 'markdown', 'markdown_inline', 'typst', 'latex' },
+          fallback_filetypes = { 'markdown', 'typst', 'tex', 'plaintex' },
+        },
+      },
     },
   },
 }
