@@ -9,7 +9,7 @@ TS.__field_constructors = {
     local ok, parser = pcall(vim.treesitter.get_parser, ctx.bufnr)
     if not ok or not parser then return vim.treesitter.language.get_lang(ctx.ft) end
     local row, col = ctx.cursor.row - 1, ctx.cursor.col
-    return parser:language_for_range({ row, col, row, col + 1 }):lang()
+    return parser:language_for_range({ row, col, row, col }):lang()
   end,
 }
 TS.__mt = {
