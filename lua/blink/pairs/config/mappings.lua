@@ -38,7 +38,7 @@ local mappings = {
               return false
             end
 
-            -- TODO: disable inside strings?
+            -- TODO: disable inside "" strings?
             return ctx.ts:blacklist('singlequote').matches
           end,
         },
