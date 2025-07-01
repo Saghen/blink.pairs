@@ -57,11 +57,13 @@ function TS:matches_capture(query_name, capture_name)
 
       for id, node in query:iter_captures(root, 0, row, row + 1) do
         local capture = query.captures[id]
-        local _, node_start, _, node_end = node:range()
+        local _, _, node_row_end, node_col_end = node:range()
+        local inside = vim.treesitter.is_in_node_range(node, row, col)
+        local after = node_row_end == row and node_col_end == ctx.prev_non_ws_col
         if
-          (capture == capture_name .. '.inside' and node_start < col and col < node_end)
-          or (capture == capture_name .. '.inside_or_after' and node_start < ctx.prev_non_ws_col and ctx.prev_non_ws_col <= node_end)
-          or (capture == capture_name .. '.after' and node_end == ctx.prev_non_ws_col)
+          (capture == capture_name .. '.inside' and inside)
+          or (capture == capture_name .. '.inside_or_after' and (inside or after))
+          or (capture == capture_name .. '.after' and after)
         then
           matches = true
           return
