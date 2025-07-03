@@ -14,11 +14,12 @@
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})
 --- @field [2]? string Closing character (e.g. {'(', ')'})
 --- @field priority? number
---- @field filetypes? string[]
---- @field when? fun(): boolean
---- @field enter? boolean | fun(): boolean
---- @field backspace? boolean | fun(): boolean
---- @field space? boolean | fun(): boolean
+--- @field languages? string[]
+--- @field fallback_filetypes? string[]
+--- @field when? fun(ctx: blink.pairs.Context): boolean
+--- @field enter? boolean | fun(ctx: blink.pairs.Context): boolean
+--- @field backspace? boolean | fun(ctx: blink.pairs.Context): boolean
+--- @field space? boolean | fun(ctx: blink.pairs.Context): boolean
 
 --- @class (exact) blink.pairs.HighlightsConfigPartial : blink.pairs.HighlightsConfig, {}
 --- @field matchparen? blink.pairs.MatchparenConfigPartial

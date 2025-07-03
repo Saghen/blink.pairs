@@ -55,12 +55,13 @@ function mappings.on_key(key, rules)
   return function()
     if not mappings.is_enabled() then return key end
 
-    local active_rules = rule_lib.get_all_active(rules)
+    local ctx = require('blink.pairs.context').new()
+    local active_rules = rule_lib.get_all_active(ctx, rules)
 
     for _, rule in ipairs(active_rules) do
       -- TODO: set lazyredraw to prevent flickering
 
-      if rule.opening == rule.closing then return mappings.open_or_close_pair(key, rule) end
+      if rule.opening == rule.closing then return mappings.open_or_close_pair(ctx, key, rule) end
 
       if #rule.opening == 1 then
         if rule.opening == key then return mappings.open_pair(key, rule) end
@@ -77,12 +78,12 @@ function mappings.on_key(key, rules)
 
       -- I.e. user types '"' for line 'r#|', we expand to 'r#""#'
       -- or the pair is "'''", in which case the index_of_key is 0 because there's no relevant prefix
-      if index_of_key == 0 or utils.is_before_cursor(opening_prefix) then
+      if index_of_key == 0 or ctx:is_before_cursor(opening_prefix) then
         return mappings.open_pair(key, rule, index_of_key + 1)
       end
 
       --- I.e. for line 'r#"', user types '"' to close the pair
-      if utils.is_before_cursor(rule.opening) then return mappings.close_pair(rule) end
+      if ctx:is_before_cursor(rule.opening) then return mappings.close_pair(rule) end
     end
 
     -- No applicable rule found
@@ -122,9 +123,10 @@ function mappings.close_pair(rule)
   return rule.closing
 end
 
+--- @param ctx blink.pairs.Context
 --- @param key string
 --- @param rule blink.pairs.Rule
-function mappings.open_or_close_pair(key, rule)
+function mappings.open_or_close_pair(ctx, key, rule)
   -- \| -> \"|
   if mappings.is_escaped() then return key end
 
@@ -132,7 +134,7 @@ function mappings.open_or_close_pair(key, rule)
   assert(pair == rule.closing, 'Opening and closing must be the same')
 
   -- |' -> '|
-  if utils.is_after_cursor(pair) then return mappings.shift_keycode(#pair) end
+  if ctx:is_after_cursor(pair) then return mappings.shift_keycode(#pair) end
 
   -- \| -> \'|
   if mappings.is_escaped() then return key end
@@ -140,8 +142,8 @@ function mappings.open_or_close_pair(key, rule)
   -- Multiple character open
   -- '|' -> '''|'''
   if #rule.opening > 1 then
-    local start_overlap = utils.find_overlap(utils.text_before_cursor(), rule.opening)
-    local end_overlap = utils.find_overlap(utils.text_after_cursor(), rule.closing)
+    local start_overlap = utils.find_overlap(ctx:text_before_cursor(), rule.opening)
+    local end_overlap = utils.find_overlap(ctx:text_after_cursor(), rule.closing)
     local opening = rule.opening:sub(start_overlap + 1)
     local closing = rule.closing:sub(1, #rule.closing - end_overlap)
 
@@ -157,7 +159,8 @@ function mappings.backspace(rules)
   return function()
     if not mappings.is_enabled() then return '<BS>' end
 
-    local rule, surrounding_space = rule_lib.get_surrounding(rules, 'backspace')
+    local ctx = require('blink.pairs.context').new()
+    local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'backspace')
     if rule == nil then return '<BS>' end
 
     -- ( | ) -> (|)
@@ -174,7 +177,8 @@ function mappings.enter(rules)
   return function()
     if not mappings.is_enabled() then return '<CR>' end
 
-    local rule, surrounding_space = rule_lib.get_surrounding(rules, 'enter')
+    local ctx = require('blink.pairs.context').new()
+    local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'enter')
     if rule == nil then return '<CR>' end
 
     if surrounding_space then return mappings.shift_keycode(1) .. '<BS><BS>' .. '<CR><C-o>O' end
@@ -192,7 +196,8 @@ function mappings.space(rules)
   return function()
     if not mappings.is_enabled() then return '<Space>' end
 
-    local rule = rule_lib.get_surrounding(rules, 'space')
+    local ctx = require('blink.pairs.context').new()
+    local rule = rule_lib.get_surrounding(ctx, rules, 'space')
     if rule == nil then return '<Space>' end
 
     -- "(|)" -> "( | )"
