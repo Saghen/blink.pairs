@@ -1,7 +1,38 @@
 --- @class blink.pairs.context.Treesitter
 --- @field ctx blink.pairs.Context
 --- @field lang string?
-local TS = {}
+local TS = {
+  lang_to_ft = {
+    bash = 'sh',
+    bibtex = 'bib',
+    c_sharp = 'cs',
+    commonlisp = 'lisp',
+    cooklang = 'cook',
+    devicetree = 'dts',
+    eex = 'elixir',
+    git_config = 'gitconfig',
+    git_rebase = 'gitrebase',
+    godot_resource = 'gdresource',
+    javascript = { 'javascript', 'javascriptreact' },
+    javascript_glimmer = 'javascript.glimmer',
+    latex = 'tex',
+    linkerscript = 'ld',
+    make = { 'make', 'automake' },
+    markdown_inline = 'markdown',
+    powershell = 'ps1',
+    qmljs = 'qml',
+    scala = { 'scala', 'sbt' },
+    ssh_config = 'sshconfig',
+    terraform = { 'terraform', 'terraform-vars' },
+    textproto = 'pbtxt',
+    tsx = 'typescriptreact',
+    typescript_glimmer = 'typescript.glimmer',
+    udev = 'udevrules',
+    xml = { 'xml', 'svg', 'xsd', 'xslt' },
+    xresources = { 'xdefaults', 'xresources' },
+  },
+}
+
 ---@type table<string, fun(ts: blink.pairs.context.Treesitter): ...>
 TS.__field_constructors = {
   lang = function(ts)
@@ -12,6 +43,7 @@ TS.__field_constructors = {
     return parser:language_for_range({ row, col, row, col }):lang()
   end,
 }
+
 TS.__mt = {
   __index = function(ts, key)
     if TS[key] ~= nil then
