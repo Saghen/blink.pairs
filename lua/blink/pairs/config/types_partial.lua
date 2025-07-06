@@ -15,7 +15,6 @@
 --- @field [2]? string Closing character (e.g. {'(', ')'})
 --- @field priority? number
 --- @field languages? string[]
---- @field fallback_filetypes? string[]
 --- @field when? fun(ctx: blink.pairs.Context): boolean
 --- @field enter? boolean | fun(ctx: blink.pairs.Context): boolean
 --- @field backspace? boolean | fun(ctx: blink.pairs.Context): boolean

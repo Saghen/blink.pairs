@@ -19,21 +19,20 @@ local mappings = {
           "'''",
           when = function(ctx) return ctx:text_before_cursor(2) == "''" end,
           languages = { 'python' },
-          fallback_filetypes = { 'python' },
         },
         {
           "'",
           enter = false,
           space = false,
           when = function(ctx)
+            if ctx.ft == 'plaintex' then
+              -- The `plaintex` filetype has no treesitter parser, so we can't disable this pair in math environments. Thus, disable this pair completely.
+              return false
+            end
+
             if
-              -- plaintex has no treesitter parser, so we can't disable this pair in math environments. thus disable this pair completely
-              ctx.ft == 'plaintex'
-              or ctx.ts:is_langs(
-                  { 'bibtex', 'comment', 'luadoc', 'latex', 'markdown', 'markdown_inline', 'typst' },
-                  { fallback_filetypes = { 'bib', 'tex', 'markdown', 'typst' } }
-                )
-                and ctx.char_under_cursor:match('%w')
+              ctx.ts:is_language({ 'bibtex', 'comment', 'luadoc', 'latex', 'markdown', 'markdown_inline', 'typst' })
+              and ctx.char_under_cursor:match('%w')
             then
               return false
             end
@@ -44,12 +43,16 @@ local mappings = {
         },
       },
       ['"'] = {
-        { 'r#"', '"#', languages = { 'rust' }, fallback_filetypes = { 'rust' }, priority = 100 },
+        {
+          'r#"',
+          '"#',
+          languages = { 'rust' },
+          priority = 100,
+        },
         {
           '"""',
           when = function(ctx) return ctx:text_before_cursor(2) == '""' end,
           languages = { 'python', 'elixir', 'julia', 'kotlin', 'scala' },
-          fallback_filetypes = { 'python', 'elixir', 'julia', 'kotlin', 'scala', 'sbt' },
         },
         { '"', enter = false, space = false },
       },
@@ -57,18 +60,13 @@ local mappings = {
         {
           '```',
           when = function(ctx) return ctx:text_before_cursor(2) == '``' end,
-          languages = { 'markdown', 'markdown_inline', 'typst' },
-          fallback_filetypes = {
-            'markdown',
-            'vimwiki',
-            'rmarkdown',
-            'rmd',
-            'pandoc',
-            'quarto',
-            'typst',
-          },
+          languages = { 'markdown', 'markdown_inline', 'typst', 'vimwiki', 'rmarkdown', 'rmd', 'quarto' },
         },
-        { '`', "'", languages = { 'bibtex', 'latex' }, fallback_filetypes = { 'bib', 'tex', 'plaintex' } },
+        {
+          '`',
+          "'",
+          languages = { 'bibtex', 'latex', 'plaintex' },
+        },
         { '`', enter = false, space = false },
       },
       ['_'] = {
@@ -79,7 +77,6 @@ local mappings = {
             return ctx.ts:blacklist('underscore').matches
           end,
           languages = { 'typst' },
-          fallback_filetypes = { 'typst' },
         },
       },
       ['*'] = {
@@ -87,7 +84,6 @@ local mappings = {
           '*',
           when = function(ctx) return ctx.ts:blacklist('asterisk').matches end,
           languages = { 'typst' },
-          fallback_filetypes = { 'typst' },
         },
       },
       ['<'] = {
@@ -97,7 +93,6 @@ local mappings = {
         {
           '$',
           languages = { 'markdown', 'markdown_inline', 'typst', 'latex' },
-          fallback_filetypes = { 'markdown', 'typst', 'tex', 'plaintex' },
         },
       },
     },
@@ -127,7 +122,6 @@ function mappings.validate_rules(key, defs)
       [2] = { def[2], { 'string', 'nil' } },
       priority = { def.priority, { 'number', 'nil' } },
       languages = { def.languages, { 'table', 'nil' } },
-      fallback_filetypes = { def.fallback_filetypes, { 'table', 'nil' } },
       when = { def.when, { 'function', 'nil' } },
       enter = { def.enter, { 'boolean', 'function', 'nil' } },
       backspace = { def.backspace, { 'boolean', 'function', 'nil' } },

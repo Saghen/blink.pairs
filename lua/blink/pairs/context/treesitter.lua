@@ -2,32 +2,33 @@
 --- @field ctx blink.pairs.Context
 --- @field lang string?
 local TS = {
-  lang_to_ft = {
-    bash = 'sh',
-    bibtex = 'bib',
-    c_sharp = 'cs',
-    commonlisp = 'lisp',
-    cooklang = 'cook',
-    devicetree = 'dts',
-    eex = 'elixir',
-    git_config = 'gitconfig',
-    git_rebase = 'gitrebase',
-    godot_resource = 'gdresource',
+  ---@type table<string, string[]>
+  __lang_to_ft = {
+    bash = { 'sh' },
+    bibtex = { 'bib' },
+    c_sharp = { 'cs' },
+    commonlisp = { 'lisp' },
+    cooklang = { 'cook' },
+    devicetree = { 'dts' },
+    eex = { 'elixir' },
+    git_config = { 'gitconfig' },
+    git_rebase = { 'gitrebase' },
+    godot_resource = { 'gdresource' },
     javascript = { 'javascript', 'javascriptreact' },
-    javascript_glimmer = 'javascript.glimmer',
-    latex = 'tex',
-    linkerscript = 'ld',
+    javascript_glimmer = { 'javascript.glimmer' },
+    latex = { 'tex' },
+    linkerscript = { 'ld' },
     make = { 'make', 'automake' },
-    markdown_inline = 'markdown',
-    powershell = 'ps1',
-    qmljs = 'qml',
+    markdown_inline = { 'markdown' },
+    powershell = { 'ps1' },
+    qmljs = { 'qml' },
     scala = { 'scala', 'sbt' },
-    ssh_config = 'sshconfig',
+    ssh_config = { 'sshconfig' },
     terraform = { 'terraform', 'terraform-vars' },
-    textproto = 'pbtxt',
-    tsx = 'typescriptreact',
-    typescript_glimmer = 'typescript.glimmer',
-    udev = 'udevrules',
+    textproto = { 'pbtxt' },
+    tsx = { 'typescriptreact' },
+    typescript_glimmer = { 'typescript.glimmer' },
+    udev = { 'udevrules' },
     xml = { 'xml', 'svg', 'xsd', 'xslt' },
     xresources = { 'xdefaults', 'xresources' },
   },
@@ -122,15 +123,84 @@ function TS:blacklist(query_name)
   return { ok = result.ok, matches = not (result.ok and result.matches) }
 end
 
---- @class blink.pairs.context.treesitter.IsLangsOpts
---- @field fallback_filetypes string[]?
+--- @param filetypes string | string[]
+--- @return string[]
+function TS.get_langs(filetypes)
+  filetypes = type(filetypes) == 'table' and filetypes or { filetypes }
+  ---@cast filetypes string[]
+
+  local r = {}
+  local seen = {}
+
+  for lang, fts in pairs(TS.__lang_to_ft) do
+    if not seen[lang] then
+      for _, ft in ipairs(fts) do
+        if vim.tbl_contains(filetypes, ft) then
+          r[#r + 1] = lang
+          seen[lang] = true
+          break
+        end
+      end
+    end
+  end
+
+  for _, ft in ipairs(filetypes) do
+    local lang = vim.treesitter.language.get_lang(ft)
+    if lang and not seen[lang] then
+      r[#r + 1] = lang
+      seen[lang] = true
+    end
+  end
+
+  return r
+end
+
+--- @param langs string | string[]
+--- @return string[]
+function TS.get_filetypes(langs)
+  langs = type(langs) == 'table' and langs or { langs }
+  ---@cast langs string[]
+
+  local r = {}
+  local seen = {}
+
+  for _, lang in ipairs(langs) do
+    r[#r + 1] = lang
+    seen[lang] = true
+  end
+
+  for lang, fts in pairs(TS.__lang_to_ft) do
+    if vim.tbl_contains(langs, lang) then
+      for _, ft in ipairs(fts) do
+        if not seen[ft] then
+          r[#r + 1] = ft
+          seen[ft] = true
+        end
+      end
+    end
+  end
+
+  for _, lang in ipairs(langs) do
+    for _, ft in ipairs(vim.treesitter.language.get_filetypes(lang)) do
+      if not seen[ft] then
+        r[#r + 1] = ft
+        seen[ft] = true
+      end
+    end
+  end
+
+  return r
+end
 
 --- @param self blink.pairs.context.Treesitter
---- @param langs string[]
---- @param opts blink.pairs.context.treesitter.IsLangsOpts?
-function TS:is_langs(langs, opts)
-  return (self.lang ~= nil and vim.tbl_contains(langs, self.lang))
-    or (opts and opts.fallback_filetypes and vim.tbl_contains(opts.fallback_filetypes, self.ctx.ft))
+--- @param langs string | string[]
+function TS:is_language(langs)
+  langs = type(langs) == 'table' and langs or { langs }
+  if self.lang ~= nil then
+    return vim.tbl_contains(langs, self.lang) or vim.tbl_contains(TS.get_langs(langs), self.lang)
+  else
+    return vim.tbl_contains(langs, self.ctx.ft) or vim.tbl_contains(TS.get_filetypes(langs), self.ctx.ft)
+  end
 end
 
 return TS

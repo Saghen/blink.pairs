@@ -88,9 +88,7 @@ function M.rule_from_def(key, def)
 
   --- @param ctx blink.pairs.Context
   local when = function(ctx)
-    if def.languages ~= nil and not ctx.ts:is_langs(def.languages, { fallback_filetypes = def.fallback_filetypes }) then
-      return false
-    end
+    if def.languages ~= nil and not ctx.ts:is_language(def.languages) then return false end
     return def.when == nil or def.when(ctx)
   end
 
