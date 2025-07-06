@@ -30,7 +30,7 @@ local mappings = {
               -- plaintex has no treesitter parser, so we can't disable this pair in math environments. thus disable this pair completely
               ctx.ft == 'plaintex'
               or ctx.ts:is_langs(
-                  { 'bibtex', 'comment', 'latex', 'markdown', 'markdown_inline', 'typst' },
+                  { 'bibtex', 'comment', 'luadoc', 'latex', 'markdown', 'markdown_inline', 'typst' },
                   { fallback_filetypes = { 'bib', 'tex', 'markdown', 'typst' } }
                 )
                 and ctx.char_under_cursor:match('%w')
