@@ -7,7 +7,9 @@
 --- @field prev_non_ws_col integer
 --- @field ts blink.pairs.context.Treesitter
 local Context = {}
----@type table<string, fun(ctx: blink.pairs.Context): ...>
+
+--- @private
+--- @type table<string, fun(ctx: blink.pairs.Context): ...>
 Context.__field_constructors = {
   char_under_cursor = function(ctx) return ctx.line:sub(ctx.cursor.col, ctx.cursor.col) end,
   prev_non_ws_col = function(ctx)
@@ -17,6 +19,8 @@ Context.__field_constructors = {
     return 0
   end,
 }
+
+--- @private
 Context.__mt = {
   __index = function(ctx, key)
     if Context[key] ~= nil then

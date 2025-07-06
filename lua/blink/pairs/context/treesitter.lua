@@ -2,7 +2,8 @@
 --- @field ctx blink.pairs.Context
 --- @field lang string?
 local TS = {
-  ---@type table<string, string[]>
+  --- @private
+  --- @type table<string, string[]>
   __lang_to_ft = {
     bash = { 'sh' },
     bibtex = { 'bib' },
@@ -34,7 +35,8 @@ local TS = {
   },
 }
 
----@type table<string, fun(ts: blink.pairs.context.Treesitter): ...>
+--- @private
+--- @type table<string, fun(ts: blink.pairs.context.Treesitter): ...>
 TS.__field_constructors = {
   lang = function(ts)
     local ctx = ts.ctx
@@ -45,6 +47,7 @@ TS.__field_constructors = {
   end,
 }
 
+--- @private
 TS.__mt = {
   __index = function(ts, key)
     if TS[key] ~= nil then
