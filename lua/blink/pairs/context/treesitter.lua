@@ -1,6 +1,6 @@
 --- @class blink.pairs.context.Treesitter
 --- @field ctx blink.pairs.Context
---- @field lang string?
+--- @field lang string? treesitter language at the context's cursor position
 local TS = {
   --- @private
   --- @type table<string, string[]>
@@ -71,20 +71,21 @@ TS.__mt = {
   end,
 }
 
---- @class blink.pairs.context.MatchResult
---- @field ok boolean
+--- @class blink.pairs.context.QueryResult
+--- @field parser_found boolean true if a parser exists at the cursor position.
 --- @field matches boolean
 
+--- Search for a treesitter capture at the current position.
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
 --- @param capture_name string
---- @return blink.pairs.context.MatchResult
+--- @return blink.pairs.context.QueryResult
 function TS:matches_capture(query_name, capture_name)
   local ctx = self.ctx
   local key = ("matches_capture('%s', '%s')"):format(query_name, capture_name)
   return require('blink.pairs.context.utils').memoize(ctx, key, function()
     local ok, parser = pcall(vim.treesitter.get_parser, ctx.bufnr)
-    if not ok or not parser then return { ok = false, matches = false } end
+    if not ok or not parser then return { parser_found = false, matches = false } end
 
     local row, col = ctx.cursor.row - 1, ctx.cursor.col
 
@@ -117,26 +118,40 @@ function TS:matches_capture(query_name, capture_name)
         end
       end
     end)
-    return { ok = true, matches = matches }
+    return { parser_found = true, matches = matches }
   end)
 end
 
+--- Return a `blink.pairs.context.QueryResult` indicating whether the “pair”
+--- capture matches at the current Treesitter node.
+---
+--- This implements a whitelist. Only positions with an explicit “pair” capture
+--- pass: `matches` is true only if `parser_found` is true and at least one
+--- “pair” capture was found.
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
---- @return blink.pairs.context.MatchResult
+--- @return blink.pairs.context.QueryResult
 function TS:whitelist(query_name)
   local result = self:matches_capture(query_name, 'pair')
-  return { ok = result.ok, matches = result.ok and result.matches }
+  return { parser_found = result.parser_found, matches = result.parser_found and result.matches }
 end
 
+--- Return a `blink.pairs.context.QueryResult` indicating whether the “nopair”
+--- capture does *not* match at the current Treesitter node.
+---
+--- This implements a blacklist. Positions with a “nopair” capture are
+--- excluded: `matches` is true if either no parser is found or the “nopair”
+--- capture yields no matches.
 --- @param self blink.pairs.context.Treesitter
 --- @param query_name string
---- @return blink.pairs.context.MatchResult
+--- @return blink.pairs.context.QueryResult
 function TS:blacklist(query_name)
   local result = self:matches_capture(query_name, 'nopair')
-  return { ok = result.ok, matches = not (result.ok and result.matches) }
+  return { parser_found = result.parser_found, matches = not (result.parser_found and result.matches) }
 end
 
+--- Returns the language names to be used when loading parsers for `filetypes`.
+--- @see vim.treesitter.language.get_filetypes
 --- @param filetypes string | string[]
 --- @return string[]
 function TS.get_langs(filetypes)
@@ -169,6 +184,9 @@ function TS.get_langs(filetypes)
   return r
 end
 
+--- Returns the filetypes for which each parser from `langs` is used. The list
+--- includes `lang` itself.
+--- @see vim.treesitter.language.get_filetypes
 --- @param langs string | string[]
 --- @return string[]
 function TS.get_filetypes(langs)
@@ -206,6 +224,15 @@ function TS.get_filetypes(langs)
   return r
 end
 
+--- Checks if a given treesitter language is found at the cursor position. If
+--- no treesitter language is found for the current cursor position (i.e. the
+--- relevant treesitter parser is not installed), then fall back to using
+--- the filetype.
+---
+--- `langs` may include both Treesitter languages or vim filetypes. Each entry
+--- is normalized to both representations and checked agains the current parser
+--- or filetype.
+---
 --- @param self blink.pairs.context.Treesitter
 --- @param langs string | string[]
 function TS:is_language(langs)

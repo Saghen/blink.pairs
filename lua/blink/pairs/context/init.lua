@@ -1,10 +1,10 @@
 --- @class blink.pairs.Context
---- @field ft string
---- @field bufnr integer
---- @field cursor { row: integer, col: integer }
---- @field line string
---- @field char_under_cursor string
---- @field prev_non_ws_col integer
+--- @field ft string filetype
+--- @field bufnr integer buffer id
+--- @field cursor { row: integer, col: integer } cursor position
+--- @field line string current line contents
+--- @field char_under_cursor string character under the cursor
+--- @field prev_non_ws_col integer column of the last non-whitespace character before the cursor
 --- @field ts blink.pairs.context.Treesitter
 local Context = {}
 
@@ -33,6 +33,7 @@ Context.__mt = {
   end,
 }
 
+--- Extract a substring around the cursor.
 --- @param self blink.pairs.Context
 --- @param start_offset integer
 --- @param end_offset integer
@@ -41,6 +42,8 @@ function Context:text_around_cursor(start_offset, end_offset)
   return self.line:sub(self.cursor.col + start_offset + 1, self.cursor.col + end_offset)
 end
 
+--- Extract up to `chars` characters immediately before the cursor. If `chars`
+--- is nil, returns text from the beginning of the line up to the cursor.
 --- @param self blink.pairs.Context
 --- @param chars integer?
 --- @return string
@@ -48,6 +51,8 @@ function Context:text_before_cursor(chars)
   return self.line:sub(chars and (self.cursor.col - chars + 1) or 1, self.cursor.col)
 end
 
+--- Extract up to `chars` characters immediately after the cursor.
+--- If `chars` is nil, returns text from just after the cursor to the end of the line.
 --- @param self blink.pairs.Context
 --- @param chars integer?
 --- @return string
@@ -55,7 +60,7 @@ function Context:text_after_cursor(chars)
   return self.line:sub(self.cursor.col + 1, chars and (self.cursor.col + chars) or nil)
 end
 
---- Checks if the text after the cursor is equal to the given text
+--- Checks if the text after the cursor is equal to the given text.
 --- @param self blink.pairs.Context
 --- @param text string
 --- @param ignore_single_space? boolean
@@ -71,7 +76,7 @@ function Context:is_after_cursor(text, ignore_single_space)
   return self.line:sub(col + 1, col + #text) == text
 end
 
---- Checks if the text before the cursor is equal to the given text
+--- Checks if the text before the cursor is equal to the given text.
 --- @param self blink.pairs.Context
 --- @param text string
 --- @param ignore_single_space? boolean
@@ -98,6 +103,7 @@ function M.new()
     cursor = { row = cursor[1], col = cursor[2] },
     line = vim.api.nvim_get_current_line(),
   }
+  ---@diagnostic disable-next-line: invisible
   self.ts = setmetatable({ ctx = self }, require('blink.pairs.context.treesitter').__mt)
   return setmetatable(self, Context.__mt)
 end
