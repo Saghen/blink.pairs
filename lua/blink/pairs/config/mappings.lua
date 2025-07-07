@@ -92,7 +92,7 @@ local mappings = {
       ['$'] = {
         {
           '$',
-          languages = { 'markdown', 'markdown_inline', 'typst', 'latex' },
+          languages = { 'markdown', 'markdown_inline', 'typst', 'latex', 'plaintex' },
         },
       },
     },
