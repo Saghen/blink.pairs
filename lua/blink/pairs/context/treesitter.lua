@@ -100,7 +100,7 @@ function TS:matches_capture(query_name, capture_name)
       local root_row_start, _, root_row_end, _ = root:range()
       if root_row_start > row or root_row_end < row then return end
 
-      local query = vim.treesitter.query.get(ltree:lang(), 'pairs.' .. query_name)
+      local query = vim.treesitter.query.get(ltree:lang(), 'blink.pairs.' .. query_name)
       if not query then return end
 
       for id, node in query:iter_captures(root, 0, row, row + 1) do
