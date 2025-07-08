@@ -3,13 +3,16 @@
 --- @field opening string
 --- @field closing string
 --- @field when fun(ctx: blink.pairs.Context): boolean
+--- @field open fun(ctx: blink.pairs.Context): boolean
+--- @field close fun(ctx: blink.pairs.Context): boolean
+--- @field open_or_close fun(ctx: blink.pairs.Context): boolean
 --- @field enter fun(ctx: blink.pairs.Context): boolean
 --- @field backspace fun(ctx: blink.pairs.Context): boolean
 --- @field space fun(ctx: blink.pairs.Context): boolean
 
 --- @alias blink.pairs.RulesByKey table<string, blink.pairs.Rule[]>
 
---- @alias blink.pairs.Mode 'enter' | 'backspace' | 'space'
+--- @alias blink.pairs.Mode 'open' | 'close' | 'open_or_close' | 'enter' | 'backspace' | 'space'
 
 local M = {}
 
@@ -80,6 +83,9 @@ function M.rule_from_def(key, def)
       closing = def,
       priority = #key + #def,
       when = function() return true end,
+      open = function() return true end,
+      close = function() return true end,
+      open_or_close = function() return true end,
       enter = function() return true end,
       backspace = function() return true end,
       space = function() return true end,
@@ -102,6 +108,9 @@ function M.rule_from_def(key, def)
     closing = closing,
     opening = opening,
     when = when,
+    open = as_func(def.open, true),
+    close = as_func(def.close, true),
+    open_or_close = as_func(def.open_or_close, true),
     enter = as_func(def.enter, true),
     backspace = as_func(def.backspace, true),
     space = as_func(def.space, true),

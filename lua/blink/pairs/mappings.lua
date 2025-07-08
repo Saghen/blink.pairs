@@ -105,6 +105,8 @@ end
 --- @param rule blink.pairs.Rule
 --- @param offset? number
 function mappings.open_pair(ctx, key, rule, offset)
+  if not rule.open(ctx) then return key end
+
   -- \| -> \(|
   if mappings.is_escaped() then return key end
 
@@ -124,6 +126,8 @@ end
 --- @param key string
 --- @param rule blink.pairs.Rule
 function mappings.close_pair(ctx, key, rule)
+  if not rule.close(ctx) then return key end
+
   -- ( ( |) -> ( (  )|)
   if
     ctx.parser.get_unmatched_opening_before(ctx.bufnr, rule.opening, rule.closing, ctx.cursor.row - 1, ctx.cursor.col)
@@ -145,6 +149,8 @@ end
 --- @param key string
 --- @param rule blink.pairs.Rule
 function mappings.open_or_close_pair(ctx, key, rule)
+  if not rule.open_or_close(ctx) then return key end
+
   -- \| -> \"|
   if mappings.is_escaped() then return key end
 

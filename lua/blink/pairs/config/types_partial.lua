@@ -16,6 +16,9 @@
 --- @field priority? number
 --- @field languages? string[]
 --- @field when? fun(ctx: blink.pairs.Context): boolean
+--- @field open? boolean | fun(ctx: blink.pairs.Context): boolean Whether to open the pair
+--- @field close? boolean | fun(ctx: blink.pairs.Context): boolean Whether to close the pair
+--- @field open_or_close? boolean | fun(ctx: blink.pairs.Context): boolean Whether to open or close the pair, used in-place of `open` and `close` when the open and close are the same (such as for '' or "")
 --- @field enter? boolean | fun(ctx: blink.pairs.Context): boolean
 --- @field backspace? boolean | fun(ctx: blink.pairs.Context): boolean
 --- @field space? boolean | fun(ctx: blink.pairs.Context): boolean
