@@ -18,6 +18,7 @@ mlua = { version = "0.10.2", features = ["module", "luajit"] }
 
 [dev-dependencies]
 criterion = "0.5.1"
+pretty_assertions = "1.4.1"
 
 [profile.bench]
 codegen-units = 1

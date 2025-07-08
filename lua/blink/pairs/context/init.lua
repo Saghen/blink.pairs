@@ -3,6 +3,7 @@
 --- @field bufnr integer buffer id
 --- @field cursor { row: integer, col: integer } cursor position
 --- @field line string current line contents
+--- @field parser blink.pairs.Parser
 --- @field char_under_cursor string character under the cursor
 --- @field prev_non_ws_col integer column of the last non-whitespace character before the cursor
 --- @field ts blink.pairs.context.Treesitter
@@ -102,6 +103,7 @@ function M.new()
     bufnr = vim.api.nvim_get_current_buf(),
     cursor = { row = cursor[1], col = cursor[2] },
     line = vim.api.nvim_get_current_line(),
+    parser = require('blink.pairs.rust'),
   }
   ---@diagnostic disable-next-line: invisible
   self.ts = setmetatable({ ctx = self }, require('blink.pairs.context.treesitter').__mt)

@@ -51,6 +51,8 @@ function mappings.is_enabled()
     and not vim.tbl_contains(require('blink.pairs.config').mappings.disabled_filetypes, vim.bo.filetype)
 end
 
+--- @param key string
+--- @param rules blink.pairs.Rule[]
 function mappings.on_key(key, rules)
   return function()
     if not mappings.is_enabled() then return key end
@@ -64,8 +66,8 @@ function mappings.on_key(key, rules)
       if rule.opening == rule.closing then return mappings.open_or_close_pair(ctx, key, rule) end
 
       if #rule.opening == 1 then
-        if rule.opening == key then return mappings.open_pair(key, rule) end
-        return mappings.close_pair(rule)
+        if rule.opening == key then return mappings.open_pair(ctx, key, rule) end
+        return mappings.close_pair(ctx, key, rule)
       end
 
       -- Multiple characters
@@ -79,11 +81,11 @@ function mappings.on_key(key, rules)
       -- I.e. user types '"' for line 'r#|', we expand to 'r#""#'
       -- or the pair is "'''", in which case the index_of_key is 0 because there's no relevant prefix
       if index_of_key == 0 or ctx:is_before_cursor(opening_prefix) then
-        return mappings.open_pair(key, rule, index_of_key + 1)
+        return mappings.open_pair(ctx, key, rule, index_of_key + 1)
       end
 
       --- I.e. for line 'r#"', user types '"' to close the pair
-      if ctx:is_before_cursor(rule.opening) then return mappings.close_pair(rule) end
+      if ctx:is_before_cursor(rule.opening) then return mappings.close_pair(ctx, key, rule) end
     end
 
     -- No applicable rule found
@@ -98,27 +100,43 @@ function mappings.shift_keycode(amount)
   return string.rep('<C-g>u<Left>', -amount)
 end
 
+--- @param ctx blink.pairs.Context
 --- @param key string
 --- @param rule blink.pairs.Rule
 --- @param offset? number
-function mappings.open_pair(key, rule, offset)
+function mappings.open_pair(ctx, key, rule, offset)
   -- \| -> \(|
   if mappings.is_escaped() then return key end
+
+  -- |) -> (|)
+  if
+    ctx.parser.get_unmatched_closing_after(ctx.bufnr, rule.opening, rule.closing, ctx.cursor.row - 1, ctx.cursor.col)
+    ~= nil
+  then
+    return key
+  end
+
   -- | -> (|)
   return rule.opening:sub(offset or 0) .. rule.closing .. mappings.shift_keycode(-#rule.closing)
 end
 
+--- @param ctx blink.pairs.Context
+--- @param key string
 --- @param rule blink.pairs.Rule
-function mappings.close_pair(rule)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local line = vim.api.nvim_get_current_line()
-  local next_char = line:sub(cursor[2] + 1, cursor[2] + 1)
-  local next_next_char = line:sub(cursor[2] + 2, cursor[2] + 2)
+function mappings.close_pair(ctx, key, rule)
+  -- ( ( |) -> ( (  )|)
+  if
+    ctx.parser.get_unmatched_opening_before(ctx.bufnr, rule.opening, rule.closing, ctx.cursor.row - 1, ctx.cursor.col)
+    ~= nil
+  then
+    return rule.closing
+  end
 
+  -- TODO: should these use rule.closing.len()
   -- |) -> )|
-  if next_char == rule.closing:sub(1, 1) then return mappings.shift_keycode(#rule.closing) end
+  if ctx:text_after_cursor(1) == rule.closing:sub(1, 1) then return mappings.shift_keycode(#rule.closing) end
   -- | ) ->  )|
-  if next_char == ' ' and next_next_char == rule.closing then return mappings.shift_keycode(2) end
+  if ctx:text_after_cursor(2) == ' ' .. rule.closing then return mappings.shift_keycode(2) end
 
   return rule.closing
 end
@@ -201,7 +219,6 @@ function mappings.space(rules)
     if rule == nil then return '<Space>' end
 
     -- "(|)" -> "( | )"
-    -- TODO: disable in strings
     return '<Space><Space>' .. mappings.shift_keycode(-1)
   end
 end

@@ -9,6 +9,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 | Before   | Input   | After    |
 |----------|---------|----------|
 | `\|`       | `(`       | `(\|)`     |
+| `\|)`      | `(`       | `(\|)`     |
 | `\|`       | `"`       | `"\|"`     |
 | `""\|`     | `"`       | `"""\|"""` |
 | `''\|`     | `'`       | `'''\|'''` |
@@ -17,6 +18,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
 | `\\|`       | `'`       | `\'\|`     |
 | `A`        | `'`       | `A'`       |
 | `(\|)`     | `)`       | `()\|`     |
+| `((\|)`     | `)`       | `(()\|)`     |
 | `'\|'`     | `'`       | `''\|`     |
 | `'''\|'''` | `'`       | `''''''\|` |
 | `(\|)`     | `<BS>`    | `\|`       |
@@ -56,6 +58,7 @@ The behavior was inspired by [lexima.vim](https://github.com/cohama/lexima.vim) 
         'BlinkPairsPurple',
         'BlinkPairsBlue',
       },
+      unmatched_group = 'BlinkPairsUnmatched',
       matchparen = {
         enabled = true,
         group = 'MatchParen',
