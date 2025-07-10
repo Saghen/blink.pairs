@@ -18,6 +18,12 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line or 0, new_end_line or -1, false)
 
   local rust = require('blink.pairs.rust')
+
+  -- TODO: use 'lua' filetype for cmd buffers with := and :lua
+  local ft = vim.bo[bufnr].filetype
+  -- map cmdline's 'cmd' filetype to 'vim'
+  if ft == 'cmd' then ft = 'vim' end
+
   local ok, ret = pcall(
     rust.parse_buffer,
     bufnr,

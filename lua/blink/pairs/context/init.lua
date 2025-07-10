@@ -93,16 +93,50 @@ function Context:is_before_cursor(text, ignore_single_space)
   return self.line:sub(col - #text + 1, col) == text
 end
 
+---@return string
+local get_mode = function() return vim.api.nvim_get_mode().mode end
+
+---@param mode string?
+---@return integer
+local get_bufnr = function(mode)
+  mode = mode or get_mode()
+  if mode == 'c' and pcall(require, 'vim._extui') then
+    local bufnr = require('vim._extui.shared').bufs.cmd
+    if bufnr and bufnr ~= -1 then return bufnr end
+  end
+  return vim.api.nvim_get_current_buf()
+end
+
+---@param mode string?
+---@return [integer, integer]
+local get_cursor = function(mode)
+  mode = mode or get_mode()
+  if mode == 'c' then
+    return { 1, vim.fn.getcmdpos() - 1 }
+  else
+    return vim.api.nvim_win_get_cursor(0)
+  end
+end
+
+---@param mode string?
+---@return string
+local get_line = function(mode)
+  mode = mode or get_mode()
+  return mode == 'c' and vim.fn.getcmdline() or vim.api.nvim_get_current_line()
+end
+
 local M = {}
 
 --- @return blink.pairs.Context
 function M.new()
-  local cursor = vim.api.nvim_win_get_cursor(0)
+  local mode = get_mode()
+  local cursor = get_cursor(mode)
+  local bufnr = get_bufnr(mode)
   local self = {
-    ft = vim.bo.filetype,
-    bufnr = vim.api.nvim_get_current_buf(),
+    ft = vim.bo[bufnr].filetype,
+    bufnr = bufnr,
     cursor = { row = cursor[1], col = cursor[2] },
-    line = vim.api.nvim_get_current_line(),
+    line = get_line(mode),
     parser = require('blink.pairs.rust'),
   }
   ---@diagnostic disable-next-line: invisible

@@ -169,11 +169,8 @@ end
 --- @return blink.pairs.Rule? rule Rule surrounding the cursor
 --- @return boolean? surrounding_space Whether there's a single space on either side of the cursor
 function M.get_surrounding(ctx, rules, mode)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local line = vim.api.nvim_get_current_line()
-
-  local before_cursor = line:sub(1, cursor[2])
-  local after_cursor = line:sub(cursor[2] + 1)
+  local before_cursor = ctx:text_before_cursor()
+  local after_cursor = ctx:text_after_cursor()
 
   local has_surrounding_space = before_cursor:sub(-1) == ' ' and after_cursor:sub(1, 1) == ' '
 
