@@ -9,15 +9,26 @@ function M.setup(config)
   local ns = vim.api.nvim_create_namespace('blink_pairs_matchparen')
   local last_buf
 
-  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+  ---@type vim.api.keyset.events[]
+  local autocmds = { 'CursorMoved', 'CursorMovedI' }
+  if vim.fn.exists('##CursorMovedC') == 1 then autocmds[#autocmds + 1] = 'CursorMovedC' end
+  -- luals bug https://github.com/LuaLS/lua-language-server/issues/3229
+  ---@diagnostic disable-next-line: param-type-mismatch
+  vim.api.nvim_create_autocmd(autocmds, {
     group = vim.api.nvim_create_augroup('BlinkPairsMatchparen', {}),
     callback = function(ev)
+      local mode = vim.api.nvim_get_mode().mode
       -- In insert mode, we'll get the CursorMovedI event, so we can ignore CursorMoved
-      if vim.api.nvim_get_mode().mode:match('i') and ev.event == 'CursorMoved' then return end
+      if mode:match('i') and ev.event ~= 'CursorMovedI' or mode:match('c') and (ev.event ~= 'CursorMovedC') then
+        return
+      end
 
       -- TODO: run this for all the windows
-      local cursor = vim.api.nvim_win_get_cursor(0)
-      local buf = vim.api.nvim_get_current_buf()
+      local ctx = require('blink.pairs.context').new()
+      -- prompt mark (`:`, `/`) is not considered when do parsing
+      local prompt_len = (mode:match('c') and 1 or 0)
+      local cursor = { ctx.cursor.row, ctx.cursor.col + prompt_len }
+      local buf = ctx.bufnr
       local pair = require('blink.pairs.rust').get_match_pair(buf, cursor[1] - 1, cursor[2])
 
       -- Clear extmarks

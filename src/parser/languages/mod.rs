@@ -31,6 +31,7 @@ mod shell;
 mod swift;
 mod toml;
 mod typst;
+mod vim;
 mod zig;
 
 pub use c::C;
@@ -66,4 +67,5 @@ pub use shell::Shell;
 pub use swift::Swift;
 pub use toml::Toml;
 pub use typst::Typst;
+pub use vim::Vim;
 pub use zig::Zig;
