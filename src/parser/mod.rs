@@ -51,6 +51,7 @@ pub fn parse_filetype(
         "swift" => Some(parse(lines, initial_state, languages::Swift {})),
         "toml" => Some(parse(lines, initial_state, languages::Toml {})),
         "typst" => Some(parse(lines, initial_state, languages::Typst {})),
+        "vim" => Some(parse(lines, initial_state, languages::Vim {})),
         "zig" => Some(parse(lines, initial_state, languages::Zig {})),
 
         _ => None,

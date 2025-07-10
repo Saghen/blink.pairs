@@ -16,7 +16,9 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   local lines = vim.api.nvim_buf_get_lines(bufnr, start_line or 0, new_end_line or -1, false)
 
   local rust = require('blink.pairs.rust')
-  local ok, ret = pcall(rust.parse_buffer, bufnr, vim.bo[bufnr].filetype, lines, start_line, old_end_line, new_end_line)
+  local ft = vim.bo[bufnr].filetype
+  if ft == 'cmd' then ft = 'vim' end
+  local ok, ret = pcall(rust.parse_buffer, bufnr, ft, lines, start_line, old_end_line, new_end_line)
   local did_parse = ok and ret
 
   if did_parse and require('blink.pairs.config').debug then
