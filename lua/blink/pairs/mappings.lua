@@ -7,7 +7,10 @@ local mappings = {}
 function mappings.register(rule_definitions)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
-  local map = function(lhs, rhs) vim.keymap.set('i', lhs, rhs, { silent = true, noremap = true, expr = true }) end
+  local map = function(lhs, rhs)
+    vim.keymap.set('i', lhs, rhs, { silent = true, noremap = true, expr = true })
+    vim.keymap.set('c', lhs, rhs, { silent = false, noremap = true, expr = true })
+  end
 
   for key, rules in pairs(rules_by_key) do
     if #rules > 0 then map(key, mappings.on_key(key, rules)) end
@@ -23,7 +26,10 @@ end
 function mappings.unregister(rule_definitions)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
-  local unmap = function(lhs) vim.keymap.del('i', lhs) end
+  local unmap = function(lhs)
+    vim.keymap.del('i', lhs)
+    vim.keymap.del('c', lhs)
+  end
 
   for key, rules in pairs(rules_by_key) do
     if #rules > 0 then unmap(key) end
@@ -98,8 +104,9 @@ end
 --- @param amount number
 --- @return string keycodes Characters to feed to neovim to move the cursor forward or backward
 function mappings.shift_keycode(amount)
-  if amount > 0 then return string.rep('<C-g>u<Right>', amount) end
-  return string.rep('<C-g>u<Left>', -amount)
+  local undo = vim.api.nvim_get_mode().mode ~= 'c' and '<C-g>u' or ''
+  if amount > 0 then return string.rep(undo .. '<Right>', amount) end
+  return string.rep(undo .. '<Left>', -amount)
 end
 
 --- @param ctx blink.pairs.Context
@@ -201,7 +208,7 @@ end
 --- @param rules blink.pairs.Rule[]
 function mappings.enter(rules)
   return function()
-    if not mappings.is_enabled() then return '<CR>' end
+    if not mappings.is_enabled() or vim.api.nvim_get_mode().mode == 'c' then return '<CR>' end
 
     local ctx = require('blink.pairs.context').new()
     local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'enter')
@@ -232,10 +239,9 @@ function mappings.space(rules)
 end
 
 function mappings.is_escaped()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local line = vim.api.nvim_get_current_line()
-
-  local col = cursor[2]
+  local ctx = require('blink.pairs.context').new()
+  local line = ctx.line
+  local col = ctx.cursor.col
   local count = 0
   while col > 0 and line:sub(col, col) == '\\' do
     count = count + 1

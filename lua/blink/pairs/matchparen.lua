@@ -9,15 +9,20 @@ function M.setup(config)
   local ns = vim.api.nvim_create_namespace('blink_pairs_matchparen')
   local last_buf
 
-  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+  local has_cursormovedc = vim.fn.exists('#CursorMovedC') == 1
+  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI', has_cursormovedc and 'CursorMovedC' or nil }, {
     group = vim.api.nvim_create_augroup('BlinkPairsMatchparen', {}),
     callback = function(ev)
+      local mode = vim.api.nvim_get_mode().mode
       -- In insert mode, we'll get the CursorMovedI event, so we can ignore CursorMoved
-      if vim.api.nvim_get_mode().mode:match('i') and ev.event == 'CursorMoved' then return end
+      if mode:match('i') and ev.event ~= 'CursorMovedI' or mode:match('c') and (ev.event ~= 'CursorMovedC') then
+        return
+      end
 
+      local ctx = require('blink.pairs.context').new()
       -- TODO: run this for all the windows
-      local cursor = vim.api.nvim_win_get_cursor(0)
-      local buf = vim.api.nvim_get_current_buf()
+      local cursor = { ctx.cursor.row, ctx.cursor.col }
+      local buf = ctx.bufnr
       local pair = require('blink.pairs.rust').get_match_pair(buf, cursor[1] - 1, cursor[2])
 
       -- Clear extmarks
