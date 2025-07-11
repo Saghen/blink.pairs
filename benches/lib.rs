@@ -1,6 +1,9 @@
-use blink_pairs::parser::{
-    languages::{Rust, C},
-    parse_filetype, tokenize, Matcher, State,
+use blink_pairs::{
+    buffer::ParsedBuffer,
+    parser::{
+        languages::{Rust, C},
+        parse_filetype, tokenize, Matcher, State,
+    },
 };
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -11,11 +14,13 @@ fn criterion_benches(c: &mut Criterion) {
     let rust_lines = rust_text.lines().collect::<Box<[_]>>();
 
     c.bench_function("parse simd - c", |b| {
-        b.iter(|| parse_filetype("c", black_box(&c_lines), State::Normal))
+        b.iter(|| ParsedBuffer::parse("c", black_box(&c_lines)))
     });
 
     c.bench_function("parse simd - rust", |b| {
-        b.iter(|| parse_filetype("rust", black_box(&rust_lines), State::Normal))
+        b.iter(|| {
+            ParsedBuffer::parse("rust", black_box(&rust_lines));
+        })
     });
 
     c.bench_function("tokenize simd - c", |b| {

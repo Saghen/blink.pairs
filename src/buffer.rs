@@ -1,3 +1,5 @@
+// TODO: refactor old code to use `iter_to/from`
+
 use crate::parser::{parse_filetype, Kind, Match, MatchWithLine, State, Token};
 
 pub struct ParsedBuffer {
@@ -9,10 +11,15 @@ impl ParsedBuffer {
     pub fn parse(filetype: &str, lines: &[&str]) -> Option<Self> {
         let (matches_by_line, state_by_line) = parse_filetype(filetype, lines, State::Normal)?;
 
-        Some(Self {
+        // TODO: refactor matches_by_line into a transparent struct with calculate_stack_heights
+        // and all helper functions
+        let mut self_ = Self {
             matches_by_line,
             state_by_line,
-        })
+        };
+        self_.calculate_stack_heights();
+
+        Some(self_)
     }
 
     pub fn reparse_range(
@@ -48,7 +55,7 @@ impl ParsedBuffer {
             self.state_by_line
                 .splice(start_line..old_end_line, state_by_line[0..length].to_vec());
 
-            self.recalculate_stack_heights();
+            self.calculate_stack_heights();
 
             true
         } else {
@@ -56,32 +63,32 @@ impl ParsedBuffer {
         }
     }
 
-    fn recalculate_stack_heights(&mut self) {
+    fn calculate_stack_heights(&mut self) {
+        let mut unmatched_openings: Vec<(usize, usize)> = vec![];
         let mut stack = vec![];
 
-        // TODO: prefer matching on the furthest pair for mismatched openings
-        // [ ( ( (  ) ]
-        // ^ ^      ^ ^
         // Continue to match on closest pair for mismatched closings
         // [ ( ) ) ) ]
         // ^ ^ ^     ^
-        for matches in self.matches_by_line.iter_mut() {
+        for (line, matches) in self.matches_by_line.iter_mut().enumerate() {
             'outer: for match_ in matches.iter_mut() {
                 // Opening delimiter
                 if match_.kind == Kind::Opening {
-                    stack.push(match_);
+                    stack.push((line, match_));
                 }
                 // Closing delimiter
                 else {
-                    for (i, opening) in stack.iter().enumerate().rev() {
+                    for (i, (_, opening)) in stack.iter().enumerate().rev() {
                         if opening.token == match_.token {
                             // Mark all skipped matches as unmatched
-                            for unmatched_opening in stack.splice((i + 1).., vec![]) {
-                                unmatched_opening.stack_height = None;
+                            for (unmatched_line, unmatched_opening) in
+                                stack.splice((i + 1).., vec![])
+                            {
+                                unmatched_openings.push((unmatched_line, unmatched_opening.col));
                             }
 
                             // Update stack height
-                            let opening = stack.pop().unwrap();
+                            let (_, opening) = stack.pop().unwrap();
                             opening.stack_height = Some(stack.len());
                             match_.stack_height = Some(stack.len());
                             continue 'outer;
@@ -95,8 +102,92 @@ impl ParsedBuffer {
         }
 
         // Remaining items in stack must be unmatched
-        for match_ in stack.iter_mut() {
+        for (line, match_) in stack.into_iter() {
+            unmatched_openings.push((line, match_.col));
+        }
+        unmatched_openings.sort();
+
+        // Remove stack heights for unmatched openings
+        for (line, col) in unmatched_openings.iter() {
+            let match_ = self.match_at_mut(*line, *col).unwrap();
             match_.stack_height = None;
+        }
+
+        // Prefer matching on the furthest pair for mismatched openings
+        // As is, we have matched like so:
+        // [ ( ( [] (  ) ]
+        // ^        ^  ^ ^
+        // but we want to match like:
+        // [ ( ( [] (  ) ]
+        // ^ ^         ^ ^
+        for (line, col) in unmatched_openings.into_iter().rev() {
+            let token = self.match_at(line, col).unwrap().token;
+            let cursor_stack_height = self.stack_height_at(line, col);
+
+            // Find the first matched opening that has the same stack height and token
+            let matched_opening = self
+                .iter_from(line, col + 1)
+                .take_while(|match_| {
+                    match_
+                        .stack_height
+                        .map(|stack_height| stack_height >= cursor_stack_height)
+                        .unwrap_or(true)
+                })
+                .find(|match_| {
+                    match_.stack_height == Some(cursor_stack_height) && match_.token == token
+                });
+
+            if let Some(matched_opening) = matched_opening {
+                // Mark matched opening as unmatched
+                let matched_opening = self
+                    .match_at_mut(matched_opening.line, matched_opening.col)
+                    .unwrap();
+                matched_opening.stack_height = None;
+
+                // Mark unmatched opening as matched, using the stack height from behind the match
+                // as unmatched openings lead to incorrect stack heights for the matches after them
+                // For example:
+                // [ ( ( ) ]
+                // 0   2 2 0
+                // When it should be:
+                // [ ( ( ) ]
+                // 0   1 1 0
+                // But since we're now matching on the unmatched opening, we end up with:
+                // [ ( ( ) ]
+                // 0 1   1 0
+                let new_stack_height = self.stack_height_at_backward(line, col);
+                let unmatched_opening = self.match_at_mut(line, col).unwrap();
+                unmatched_opening.stack_height = new_stack_height;
+
+                // All matches between the unmatched opening and the matched opening are now
+                // 1 stack height deeper, so we update them. For example, starting with:
+                // [ ( { } ( ) ]
+                // 0   1 1 1 1 0
+                // After the previous step, we have:
+                // [ ( { } ( ) ]
+                // 0 1 1 1   1 0
+                // So we update the "{ }" stack height by 1
+                // [ ( { } ( ) ]
+                // 0 1 2 2   1 0
+                for match_ in self.matches_by_line[line..]
+                    .iter_mut()
+                    .enumerate()
+                    .flat_map(|(line_idx, matches)| {
+                        matches
+                            .iter_mut()
+                            .filter(move |match_| line_idx != 0 || match_.col > col)
+                    })
+                {
+                    if match_.stack_height == Some(cursor_stack_height)
+                        && match_.token == token
+                        && match_.kind == Kind::Closing
+                    {
+                        match_.stack_height = new_stack_height;
+                        break;
+                    }
+                    match_.stack_height = match_.stack_height.map(|stack_height| stack_height + 1);
+                }
+            }
         }
     }
 
@@ -129,13 +220,13 @@ impl ParsedBuffer {
         self.matches_by_line[0..=line_number.min(self.matches_by_line.len() - 1)]
             .iter()
             .enumerate()
-            .rev()
             .flat_map(move |(current_line, matches)| {
                 matches
                     .iter()
                     .filter(move |match_| current_line != line_number || match_.col < col)
                     .map(move |match_| match_.with_line(current_line))
             })
+            .rev()
     }
 
     pub fn span_at(&self, line_number: usize, col: usize) -> Option<String> {
@@ -189,6 +280,13 @@ impl ParsedBuffer {
             .iter()
             .find(|match_| (match_.col..(match_.col + match_.len())).contains(&col))
             .cloned()
+    }
+
+    pub fn match_at_mut(&mut self, line_number: usize, col: usize) -> Option<&mut Match> {
+        self.matches_by_line
+            .get_mut(line_number)?
+            .iter_mut()
+            .find(|match_| (match_.col..(match_.col + match_.len())).contains(&col))
     }
 
     pub fn match_pair(
@@ -248,22 +346,25 @@ impl ParsedBuffer {
         }
     }
 
+    pub fn stack_height_at_forward(&self, line_number: usize, col: usize) -> Option<usize> {
+        self.iter_from(line_number, col).find_map(|match_| {
+            match_.stack_height.map(|stack_height| {
+                stack_height + (if match_.kind == Kind::Closing { 1 } else { 0 })
+            })
+        })
+    }
+
+    pub fn stack_height_at_backward(&self, line_number: usize, col: usize) -> Option<usize> {
+        self.iter_to(line_number, col).find_map(|match_| {
+            match_.stack_height.map(|stack_height| {
+                stack_height + (if match_.kind == Kind::Opening { 1 } else { 0 })
+            })
+        })
+    }
+
     pub fn stack_height_at(&self, line_number: usize, col: usize) -> usize {
-        // Forward pass
-        self.iter_from(line_number, col)
-            .find_map(|match_| {
-                match_.stack_height.map(|stack_height| {
-                    stack_height + (if match_.kind == Kind::Closing { 1 } else { 0 })
-                })
-            })
-            // Backward pass, if needed
-            .or_else(|| {
-                self.iter_to(line_number, col).find_map(|match_| {
-                    match_.stack_height.map(|stack_height| {
-                        stack_height + (if match_.kind == Kind::Opening { 1 } else { 0 })
-                    })
-                })
-            })
+        self.stack_height_at_forward(line_number, col)
+            .or_else(|| self.stack_height_at_backward(line_number, col))
             .unwrap_or(0)
     }
 
@@ -275,7 +376,6 @@ impl ParsedBuffer {
         col: usize,
     ) -> Option<MatchWithLine> {
         let cursor_stack_height = self.stack_height_at(line_number, col);
-        let mut lowest_stack_height = cursor_stack_height;
         let mut current_stack_height = cursor_stack_height;
 
         for match_ in self
@@ -284,24 +384,8 @@ impl ParsedBuffer {
         {
             if let Some(stack_height) = match_.stack_height {
                 // Stack height higher than cursor
-                if stack_height < lowest_stack_height {
-                    // For example: ( [] ( | )
-                    // Stack:            ^   ^
-                    // Cursor stack height: 1
-                    // We can close the outer pair by adding a closing pair at the cursor
-                    if match_.kind == Kind::Opening
-                        && match_.token.closing() == Some(closing)
-                        && match_.token.opening() == opening
-                    {
-                        lowest_stack_height = stack_height;
-                    }
-                    // In this example: ( [ ( | ) ] )
-                    // Stack:             ^ ^   ^ ^
-                    // Cursor stack height: 2
-                    // Inserting a closing pair would not close the outer pair, so we exit
-                    else {
-                        return None;
-                    }
+                if stack_height < cursor_stack_height {
+                    return None;
                 }
 
                 current_stack_height =
@@ -313,7 +397,7 @@ impl ParsedBuffer {
                 && match_.token.opening() == opening
                 && match_.token.closing() == Some(closing)
                 && match_.stack_height == None
-                && current_stack_height == lowest_stack_height
+                && current_stack_height == cursor_stack_height
             {
                 return Some(match_);
             }

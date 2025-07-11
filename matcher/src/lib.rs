@@ -219,38 +219,15 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
 
     // 8. Delimiter patterns
     for (open, close) in &def.delimiters {
-        let close_byte = close.as_bytes()[0];
-
         // Opening delimiter
         let open_arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
-            stack.push((matches_by_line.len(), matches.len(), #close_byte));
-            matches.push(Match::new_with_stack(Kind::Opening, Token::Delimiter(#open, #close), token.col, stack.len() - 1));
+            matches.push(Match::new(Kind::Opening, Token::Delimiter(#open, #close), token.col));
             State::Normal
         });
         match_arms.push(open_arm.build());
 
         // Closing delimiter
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead).body(quote! {
-            // Search the stack from top to bottom for the matching opening delimiter
-            for (i, (_, _, closing)) in stack.iter().enumerate().rev() {
-                if *closing == #close_byte {
-                    // Mark all skipped matches as unmatched
-                    for (match_line, match_index, _) in stack.splice((i + 1).., vec![]) {
-                        if match_line < matches_by_line.len() {
-                            matches_by_line[match_line][match_index].stack_height = None;
-                        } else {
-                            matches[match_index].stack_height = None;
-                        }
-                    }
-
-                    // Add match
-                    stack.pop();
-                    matches.push(Match::new_with_stack(Kind::Closing, Token::Delimiter(#open, #close), token.col, stack.len()));
-                    return State::Normal;
-                }
-            }
-
-            // No match found, mark as unmatched
             matches.push(Match::new(Kind::Closing, Token::Delimiter(#open, #close), token.col));
             State::Normal
         });
@@ -282,7 +259,6 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
                 &mut self,
                 matches_by_line: &mut Vec<Vec<Match>>,
                 matches: &mut Vec<Match>,
-                stack: &mut Vec<(usize, usize, u8)>,
                 tokens: &mut MultiPeek<I>,
                 state: State,
                 token: CharPos,
