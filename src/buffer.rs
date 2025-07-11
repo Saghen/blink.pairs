@@ -63,6 +63,36 @@ impl ParsedBuffer {
         }
     }
 
+    fn recursive_find(
+        &self,
+        token: Token,
+        line: usize,
+        col: usize,
+        stack_height: usize,
+    ) -> Option<MatchWithLine> {
+        let matched_opening = self
+            .iter_from(line, col + 1)
+            .take_while(|match_| {
+                match_
+                    .stack_height
+                    .map(|sh| sh >= stack_height)
+                    .unwrap_or(true)
+            })
+            .find(|match_| match_.stack_height == Some(stack_height) && match_.token == token);
+
+        matched_opening
+            .clone()
+            .and_then(|matched_opening| {
+                self.recursive_find(
+                    token,
+                    matched_opening.line,
+                    matched_opening.col,
+                    stack_height + 1,
+                )
+            })
+            .or(matched_opening)
+    }
+
     fn calculate_stack_heights(&mut self) {
         let mut unmatched_openings: Vec<(usize, usize)> = vec![];
         let mut stack = vec![];
@@ -125,17 +155,8 @@ impl ParsedBuffer {
             let cursor_stack_height = self.stack_height_at(line, col);
 
             // Find the first matched opening that has the same stack height and token
-            let matched_opening = self
-                .iter_from(line, col + 1)
-                .take_while(|match_| {
-                    match_
-                        .stack_height
-                        .map(|stack_height| stack_height >= cursor_stack_height)
-                        .unwrap_or(true)
-                })
-                .find(|match_| {
-                    match_.stack_height == Some(cursor_stack_height) && match_.token == token
-                });
+            let matched_opening =
+                self.recursive_find(token.clone(), line, col, cursor_stack_height);
 
             if let Some(matched_opening) = matched_opening {
                 // Mark matched opening as unmatched
@@ -185,7 +206,7 @@ impl ParsedBuffer {
                         match_.stack_height = new_stack_height;
                         break;
                     }
-                    match_.stack_height = match_.stack_height.map(|stack_height| stack_height + 1);
+                    // match_.stack_height = match_.stack_height.map(|stack_height| stack_height + 1);
                 }
             }
         }
