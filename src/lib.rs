@@ -9,6 +9,7 @@ use buffer::ParsedBuffer;
 use parser::{Match, MatchWithLine};
 
 pub mod buffer;
+pub mod indent;
 pub mod parser;
 
 static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
