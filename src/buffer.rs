@@ -60,6 +60,7 @@ impl ParsedBuffer {
         }
     }
 
+    // TODO: return iterator
     fn recursive_find(
         &self,
         token: Token,
@@ -103,9 +104,11 @@ impl ParsedBuffer {
         let mut unmatched_openings: Vec<(usize, usize)> = vec![];
         let mut stack = vec![];
 
-        // Continue to match on closest pair for mismatched closings
-        // [ ( ) ) ) ]
-        // ^ ^ ^     ^
+        // Get stack heights for all openings using a traditional stack
+        // This results in matching on the closest pairs when there are mismatched
+        // openings/closings
+        // [ ( ( [] (  ) ]
+        // 0     11 1  1 0
         for (line, matches) in self.matches_by_line.iter_mut().enumerate() {
             'outer: for match_ in matches.iter_mut() {
                 // Opening delimiter
@@ -152,40 +155,61 @@ impl ParsedBuffer {
         // Prefer matching on the furthest pair for mismatched openings
         // As is, we have matched like so:
         // [ ( ( [] (  ) ]
-        // ^        ^  ^ ^
+        // 0     11 1  1 0
         // but we want to match like:
         // [ ( ( [] (  ) ]
-        // ^ ^         ^ ^
+        // 0 1   22    1 0
         for (line, col) in unmatched_openings.into_iter().rev() {
-            self.name_me(line, col, tab_width);
+            self.rematch_by_indent_recursive(line, col, tab_width);
         }
     }
 
     /// Gets the indent level of the line, rounded down to the nearest tab width
-    pub fn indent_level(&self, line: usize, tab_width: u8) -> u8 {
+    pub fn nearest_indent_level(&self, line: usize, tab_width: u8) -> u8 {
         self.indent_levels[line].div_floor(tab_width) * tab_width
     }
 
-    pub fn name_me(&mut self, line: usize, col: usize, tab_width: u8) {
-        let indent_level = self.indent_level(line, tab_width);
+    /// Given an unmatched opening's position, attempts to find a matching opening/closing pair with an
+    /// where the closing ident level matches the unmatched opening.
+    /// Performed recursively until the match cannot be moved further down the stack.
+    ///
+    /// ```rust
+    /// if some_example {
+    ///     //          ^ unmatched
+    ///     if no_closing_on_this {
+    ///         //       matched  ^
+    /// }
+    /// ```
+    /// becomes
+    /// ```rust
+    /// if some_example {
+    ///     //  matched ^
+    ///     if no_closing_on_this {
+    ///         //      unmatched ^
+    ///     }
+    /// }
+    /// ```
+    pub fn rematch_by_indent_recursive(&mut self, line: usize, col: usize, tab_width: u8) {
+        let indent_level = self.nearest_indent_level(line, tab_width);
         let token = self.match_at(line, col).unwrap().token;
-        let cursor_stack_height = self.stack_height_at(line, col);
+        let stack_height = self.stack_height_at(line, col);
 
+        // Find the first matched opening that has the same stack height and token
         let mut matched_openings = self
-            .recursive_find(token.clone(), line, col, cursor_stack_height)
+            .recursive_find(token.clone(), line, col, stack_height)
             .iter()
             .flat_map(|match_| self.match_pair(match_.line, match_.col))
             .filter(|(open, close)| {
-                self.indent_level(close.line, tab_width) == indent_level
-                    && self.indent_level(close.line, tab_width)
-                        != self.indent_level(open.line, tab_width)
+                self.nearest_indent_level(close.line, tab_width) == indent_level
+                    && self.nearest_indent_level(close.line, tab_width)
+                        != self.nearest_indent_level(open.line, tab_width)
             })
             .collect::<Vec<_>>();
         matched_openings.sort_by_key(|(_, close)| close.line);
 
-        // Find the first matched opening that has the same stack height and token
-
-        if let Some((matched_opening_with_line, _)) = matched_openings.first() {
+        if let Some((matched_opening_with_line, matched_closing_with_line)) =
+            matched_openings.first()
+        {
             // Mark matched opening as unmatched
             let matched_opening = self
                 .match_at_mut(
@@ -195,8 +219,8 @@ impl ParsedBuffer {
                 .unwrap();
             matched_opening.stack_height = None;
 
-            // Mark unmatched opening as matched, using the stack height from behind the match
-            // as unmatched openings lead to incorrect stack heights for the matches after them
+            // Mark unmatched opening as matched, using the stack height - 1 as unmatched
+            // openings lead to incorrect stack heights for the matches after them
             // For example:
             // [ ( ( ) ]
             // 0   2 2 0
@@ -206,40 +230,47 @@ impl ParsedBuffer {
             // But since we're now matching on the unmatched opening, we end up with:
             // [ ( ( ) ]
             // 0 1   1 0
-            let new_stack_height = self.stack_height_at_backward(line, col);
             let unmatched_opening = self.match_at_mut(line, col).unwrap();
-            unmatched_opening.stack_height = new_stack_height;
+            unmatched_opening.stack_height = Some(stack_height.saturating_sub(1));
 
-            // All matches between the unmatched opening and the matched opening are now
-            // 1 stack height deeper, so we update them. For example, starting with:
-            // [ ( { } ( ) ]
-            // 0   1 1 1 1 0
+            let matched_closing = self
+                .match_at_mut(
+                    matched_closing_with_line.line,
+                    matched_closing_with_line.col,
+                )
+                .unwrap();
+            matched_closing.stack_height = Some(stack_height.saturating_sub(1));
+
+            // All matches after the closing match are now 1 stack height shallower,
+            // For example, starting with:
+            // [ ( ( ) { } ]
+            // 0   2 2 2 2 0
             // After the previous step, we have:
-            // [ ( { } ( ) ]
-            // 0 1 1 1   1 0
+            // [ ( ( ) { } ]
+            // 0 1   1 2 2 0
             // So we update the "{ }" stack height by 1
-            // [ ( { } ( ) ]
-            // 0 1 2 2   1 0
-            for match_ in self.matches_by_line[line..]
+            // [ ( ( ) { } ]
+            // 0 1   1 1 1 0
+            for match_ in self.matches_by_line[matched_closing_with_line.line..]
                 .iter_mut()
                 .enumerate()
                 .flat_map(|(line_idx, matches)| {
-                    matches
-                        .iter_mut()
-                        .filter(move |match_| line_idx != 0 || match_.col > col)
+                    matches.iter_mut().filter(move |match_| {
+                        line_idx != 0 || match_.col > matched_closing_with_line.col
+                    })
                 })
             {
-                if match_.stack_height == Some(cursor_stack_height)
-                    && match_.token == token
+                if match_.stack_height == Some(stack_height.saturating_sub(1))
                     && match_.kind == Kind::Closing
                 {
-                    match_.stack_height = new_stack_height;
                     break;
                 }
-                // match_.stack_height = match_.stack_height.map(|stack_height| stack_height + 1);
+                match_.stack_height = match_
+                    .stack_height
+                    .map(|stack_height| stack_height.saturating_sub(1));
             }
 
-            self.name_me(
+            self.rematch_by_indent_recursive(
                 matched_opening_with_line.line,
                 matched_opening_with_line.col,
                 tab_width,
