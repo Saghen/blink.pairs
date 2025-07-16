@@ -1,4 +1,5 @@
 #![feature(portable_simd)]
+#![feature(int_roundings)]
 
 use mlua::prelude::*;
 use parser::matcher::TokenType;
