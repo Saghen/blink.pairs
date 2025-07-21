@@ -4,12 +4,13 @@ local rule_lib = require('blink.pairs.rule')
 local mappings = {}
 
 --- @param rule_definitions blink.pairs.RuleDefinitions
-function mappings.register(rule_definitions)
+--- @param cmdline boolean
+function mappings.register(rule_definitions, cmdline)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
   local map = function(lhs, rhs)
     vim.keymap.set('i', lhs, rhs, { silent = true, noremap = true, expr = true })
-    vim.keymap.set('c', lhs, rhs, { silent = false, noremap = true, expr = true })
+    if cmdline then vim.keymap.set('c', lhs, rhs, { silent = false, noremap = true, expr = true }) end
   end
 
   for key, rules in pairs(rules_by_key) do
@@ -23,12 +24,13 @@ function mappings.register(rule_definitions)
 end
 
 --- @param rule_definitions blink.pairs.RuleDefinitions
-function mappings.unregister(rule_definitions)
+--- @param cmdline boolean
+function mappings.unregister(rule_definitions, cmdline)
   local rules_by_key = rule_lib.parse(rule_definitions)
 
   local unmap = function(lhs)
     vim.keymap.del('i', lhs)
-    vim.keymap.del('c', lhs)
+    if cmdline then vim.keymap.del('c', lhs) end
   end
 
   for key, rules in pairs(rules_by_key) do
@@ -42,12 +44,12 @@ end
 
 function mappings.enable()
   local config = require('blink.pairs.config')
-  mappings.register(config.mappings.pairs)
+  mappings.register(config.mappings.pairs, config.mappings.cmdline)
 end
 
 function mappings.disable()
   local config = require('blink.pairs.config')
-  mappings.unregister(config.mappings.pairs)
+  mappings.unregister(config.mappings.pairs, config.mappings.cmdline)
 end
 
 function mappings.is_enabled()

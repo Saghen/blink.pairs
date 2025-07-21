@@ -12,14 +12,17 @@ function M.setup(config)
 
   --- @type vim.api.keyset.events[]
   local autocmds = { 'CursorMoved', 'CursorMovedI' }
-  if vim.fn.exists('##CursorMovedC') == 1 then table.insert(autocmds, 'CursorMovedC') end
+  if vim.fn.exists('##CursorMovedC') == 1 and config.cmdline then table.insert(autocmds, 'CursorMovedC') end
 
   vim.api.nvim_create_autocmd(autocmds, {
     group = vim.api.nvim_create_augroup('BlinkPairsMatchparen', {}),
     callback = function(ev)
       local mode = vim.api.nvim_get_mode().mode
       -- In insert mode, we'll get the CursorMovedI event, so we can ignore CursorMoved
-      if (mode:match('i') and ev.event ~= 'CursorMovedI') or (mode:match('c') and ev.event ~= 'CursorMovedC') then
+      if
+        (mode:match('i') and ev.event ~= 'CursorMovedI')
+        or (mode:match('c') and config.cmdline and ev.event ~= 'CursorMovedC')
+      then
         return
       end
 

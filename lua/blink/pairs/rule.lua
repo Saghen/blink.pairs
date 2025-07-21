@@ -94,6 +94,7 @@ function M.rule_from_def(key, def)
 
   --- @param ctx blink.pairs.Context
   local when = function(ctx)
+    if def.cmdline == false and ctx.mode:match('c') then return false end
     if def.languages ~= nil and not ctx.ts:is_language(def.languages) then return false end
     return def.when == nil or def.when(ctx)
   end

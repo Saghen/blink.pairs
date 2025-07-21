@@ -1,5 +1,6 @@
 --- @class (exact) blink.pairs.MappingsConfig
 --- @field enabled boolean
+--- @field cmdline boolean
 --- @field disabled_filetypes string[]
 --- @field pairs blink.pairs.RuleDefinitions
 
@@ -8,6 +9,7 @@ local mappings = {
   --- @type blink.pairs.MappingsConfig
   default = {
     enabled = true,
+    cmdline = true,
     disabled_filetypes = {},
     pairs = {
       ['!'] = { { '<!--', '-->', languages = { 'html', 'markdown', 'markdown_inline' } } },
@@ -91,6 +93,7 @@ local mappings = {
 function mappings.validate(config)
   validate('mappings', {
     enabled = { config.enabled, 'boolean' },
+    cmdline = { config.cmdline, 'boolean' },
     disabled_filetypes = { config.disabled_filetypes, 'table' },
     pairs = { config.pairs, 'table' },
   }, config)
@@ -109,6 +112,7 @@ function mappings.validate_rules(key, defs)
     validate('mappings.pairs.[' .. key .. '].' .. i, {
       [1] = { def[1], 'string' },
       [2] = { def[2], { 'string', 'nil' } },
+      cmdline = { def.cmdline, { 'boolean', 'nil' } },
       priority = { def.priority, { 'number', 'nil' } },
       languages = { def.languages, { 'table', 'nil' } },
       when = { def.when, { 'function', 'nil' } },

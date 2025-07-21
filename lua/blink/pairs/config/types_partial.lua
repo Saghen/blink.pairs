@@ -14,6 +14,7 @@
 --- @field [1] string Closing character (e.g. { ')' }) or opening character if two characters are provided (e.g. {'(', ')'})
 --- @field [2]? string Closing character (e.g. {'(', ')'})
 --- @field priority? number
+--- @field cmdline? boolean
 --- @field languages? string[]
 --- @field when? fun(ctx: blink.pairs.Context): boolean
 --- @field open? boolean | fun(ctx: blink.pairs.Context): boolean Whether to open the pair

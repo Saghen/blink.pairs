@@ -4,6 +4,8 @@ local highlighter = {}
 function highlighter.register(config)
   vim.api.nvim_set_decoration_provider(config.ns, {
     on_win = function(_, _, bufnr)
+      if not config.cmdline and vim.api.nvim_get_mode().mode:match('c') then return false end
+
       vim.api.nvim_buf_clear_namespace(bufnr, config.ns, 0, -1)
       return require('blink.pairs.watcher').attach(bufnr)
     end,

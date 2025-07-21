@@ -1,4 +1,5 @@
 --- @class blink.pairs.Context
+--- @field mode string
 --- @field ft string filetype
 --- @field bufnr integer buffer id
 --- @field cursor { row: integer, col: integer } cursor position
@@ -133,6 +134,7 @@ function M.new()
   local cursor = get_cursor(mode)
   local bufnr = get_bufnr(mode)
   local self = {
+    mode = mode,
     ft = vim.bo[bufnr].filetype,
     bufnr = bufnr,
     cursor = { row = cursor[1], col = cursor[2] },

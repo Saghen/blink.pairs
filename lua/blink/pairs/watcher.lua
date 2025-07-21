@@ -24,16 +24,8 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
   -- map cmdline's 'cmd' filetype to 'vim'
   if ft == 'cmd' then ft = 'vim' end
 
-  local ok, ret = pcall(
-    rust.parse_buffer,
-    bufnr,
-    utils.get_tab_width(bufnr),
-    vim.bo[bufnr].filetype,
-    lines,
-    start_line,
-    old_end_line,
-    new_end_line
-  )
+  local ok, ret =
+    pcall(rust.parse_buffer, bufnr, utils.get_tab_width(bufnr), ft, lines, start_line, old_end_line, new_end_line)
   local did_parse = ok and ret
 
   if did_parse and require('blink.pairs.config').debug then
