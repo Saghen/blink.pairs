@@ -6,20 +6,20 @@ local M = {}
 function M.setup(config)
   if not (config.matchparen and config.matchparen.enabled) then return end
 
+  local rust = require('blink.pairs.rust')
   local ns = vim.api.nvim_create_namespace('blink_pairs_matchparen')
   local last_buf
 
-  ---@type vim.api.keyset.events[]
+  --- @type vim.api.keyset.events[]
   local autocmds = { 'CursorMoved', 'CursorMovedI' }
-  if vim.fn.exists('##CursorMovedC') == 1 then autocmds[#autocmds + 1] = 'CursorMovedC' end
-  -- luals bug https://github.com/LuaLS/lua-language-server/issues/3229
-  ---@diagnostic disable-next-line: param-type-mismatch
+  if vim.fn.exists('##CursorMovedC') == 1 then table.insert(autocmds, 'CursorMovedC') end
+
   vim.api.nvim_create_autocmd(autocmds, {
     group = vim.api.nvim_create_augroup('BlinkPairsMatchparen', {}),
     callback = function(ev)
       local mode = vim.api.nvim_get_mode().mode
       -- In insert mode, we'll get the CursorMovedI event, so we can ignore CursorMoved
-      if mode:match('i') and ev.event ~= 'CursorMovedI' or mode:match('c') and (ev.event ~= 'CursorMovedC') then
+      if (mode:match('i') and ev.event ~= 'CursorMovedI') or (mode:match('c') and ev.event ~= 'CursorMovedC') then
         return
       end
 
@@ -29,7 +29,8 @@ function M.setup(config)
       local prompt_len = (mode:match('c') and 1 or 0)
       local cursor = { ctx.cursor.row, ctx.cursor.col + prompt_len }
       local buf = ctx.bufnr
-      local pair = require('blink.pairs.rust').get_match_pair(buf, cursor[1] - 1, cursor[2])
+      -- TODO: returns nil in cmdline mode due to the autocmd running before the watcher
+      local pair = rust.get_match_pair(buf, cursor[1] - 1, cursor[2])
 
       -- Clear extmarks
       if last_buf and vim.api.nvim_buf_is_valid(last_buf) then vim.api.nvim_buf_clear_namespace(last_buf, ns, 0, -1) end
