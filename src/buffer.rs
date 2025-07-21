@@ -60,46 +60,6 @@ impl ParsedBuffer {
         }
     }
 
-    // TODO: return iterator
-    fn recursive_find(
-        &self,
-        token: Token,
-        line: usize,
-        col: usize,
-        stack_height: usize,
-    ) -> Vec<MatchWithLine> {
-        let matches: Vec<MatchWithLine> = self
-            .iter_from(line, col + 1)
-            .take_while(|match_| {
-                match_
-                    .stack_height
-                    .map(|sh| sh >= stack_height)
-                    .unwrap_or(true)
-            })
-            .filter(|match_| match_.stack_height == Some(stack_height) && match_.token == token)
-            .collect();
-
-        let mut all_matches = Vec::new();
-
-        for matched_opening in matches {
-            // Add the current match
-            all_matches.push(matched_opening.clone());
-
-            // Recursively find deeper matches
-            let deeper_matches = self.recursive_find(
-                token.clone(),
-                matched_opening.line,
-                matched_opening.col,
-                stack_height + 1,
-            );
-
-            // Add all deeper matches
-            all_matches.extend(deeper_matches);
-        }
-
-        all_matches
-    }
-
     fn calculate_stack_heights(&mut self, tab_width: u8) {
         let mut unmatched_openings: Vec<(usize, usize)> = vec![];
         let mut stack = vec![];
@@ -165,11 +125,11 @@ impl ParsedBuffer {
     }
 
     /// Gets the indent level of the line, rounded down to the nearest tab width
-    pub fn nearest_indent_level(&self, line: usize, tab_width: u8) -> u8 {
+    pub fn rounded_indent_level(&self, line: usize, tab_width: u8) -> u8 {
         self.indent_levels[line].div_floor(tab_width) * tab_width
     }
 
-    /// Given an unmatched opening's position, attempts to find a matching opening/closing pair with an
+    /// Given an unmatched opening's position, attempts to find a matching opening/closing pair
     /// where the closing ident level matches the unmatched opening.
     /// Performed recursively until the match cannot be moved further down the stack.
     ///
@@ -190,26 +150,28 @@ impl ParsedBuffer {
     /// }
     /// ```
     pub fn rematch_by_indent_recursive(&mut self, line: usize, col: usize, tab_width: u8) {
-        let indent_level = self.nearest_indent_level(line, tab_width);
+        let indent_level = self.rounded_indent_level(line, tab_width);
         let token = self.match_at(line, col).unwrap().token;
         let stack_height = self.stack_height_at(line, col);
 
         // Find the first matched opening that has the same stack height and token
-        let mut matched_openings = self
-            .recursive_find(token.clone(), line, col, stack_height)
-            .iter()
-            .flat_map(|match_| self.match_pair(match_.line, match_.col))
-            .filter(|(open, close)| {
-                self.nearest_indent_level(close.line, tab_width) == indent_level
-                    && self.nearest_indent_level(close.line, tab_width)
-                        != self.nearest_indent_level(open.line, tab_width)
+        let matched_pair = self
+            .iter_from(line, col + 1)
+            .take_while(|match_| {
+                match_
+                    .stack_height
+                    .map(|sh| sh >= stack_height.saturating_add(1))
+                    .unwrap_or(true)
             })
-            .collect::<Vec<_>>();
-        matched_openings.sort_by_key(|(_, close)| close.line);
+            .filter(|match_| match_.token == token.clone())
+            .flat_map(|match_| self.match_pair(match_.line, match_.col))
+            .find(|(open, close)| {
+                self.rounded_indent_level(close.line, tab_width) == indent_level
+                    && self.rounded_indent_level(close.line, tab_width)
+                        != self.rounded_indent_level(open.line, tab_width)
+            });
 
-        if let Some((matched_opening_with_line, matched_closing_with_line)) =
-            matched_openings.first()
-        {
+        if let Some((matched_opening_with_line, matched_closing_with_line)) = matched_pair {
             // Mark matched opening as unmatched
             let matched_opening = self
                 .match_at_mut(
@@ -231,7 +193,7 @@ impl ParsedBuffer {
             // [ ( ( ) ]
             // 0 1   1 0
             let unmatched_opening = self.match_at_mut(line, col).unwrap();
-            unmatched_opening.stack_height = Some(stack_height.saturating_sub(1));
+            unmatched_opening.stack_height = Some(stack_height);
 
             let matched_closing = self
                 .match_at_mut(
@@ -239,7 +201,7 @@ impl ParsedBuffer {
                     matched_closing_with_line.col,
                 )
                 .unwrap();
-            matched_closing.stack_height = Some(stack_height.saturating_sub(1));
+            matched_closing.stack_height = Some(stack_height);
 
             // All matches after the closing match are now 1 stack height shallower,
             // For example, starting with:
@@ -260,9 +222,7 @@ impl ParsedBuffer {
                     })
                 })
             {
-                if match_.stack_height == Some(stack_height.saturating_sub(1))
-                    && match_.kind == Kind::Closing
-                {
+                if match_.stack_height == Some(stack_height) && match_.kind == Kind::Closing {
                     break;
                 }
                 match_.stack_height = match_
@@ -445,19 +405,55 @@ impl ParsedBuffer {
     }
 
     pub fn stack_height_at_forward(&self, line_number: usize, col: usize) -> Option<usize> {
-        self.iter_from(line_number, col).find_map(|match_| {
-            match_.stack_height.map(|stack_height| {
-                stack_height + (if match_.kind == Kind::Closing { 1 } else { 0 })
+        let mut unmatched_opening_count: usize = 0;
+        self.iter_from(line_number, col)
+            .find_map(|match_| match match_.stack_height {
+                Some(stack_height) => Some(
+                    stack_height
+                        .saturating_add(if match_.kind == Kind::Closing { 1 } else { 0 })
+                        .saturating_sub(unmatched_opening_count),
+                ),
+                None => {
+                    if matches!(match_.token, Token::Delimiter(_, _)) {
+                        match match_.kind {
+                            Kind::Opening => {
+                                unmatched_opening_count = unmatched_opening_count.saturating_add(1)
+                            }
+                            Kind::Closing => {
+                                unmatched_opening_count = unmatched_opening_count.saturating_sub(1)
+                            }
+                            Kind::NonPair => {}
+                        };
+                    }
+                    None
+                }
             })
-        })
     }
 
     pub fn stack_height_at_backward(&self, line_number: usize, col: usize) -> Option<usize> {
-        self.iter_to(line_number, col).find_map(|match_| {
-            match_.stack_height.map(|stack_height| {
-                stack_height + (if match_.kind == Kind::Opening { 1 } else { 0 })
+        let mut unmatched_opening_count: usize = 0;
+        self.iter_to(line_number, col)
+            .find_map(|match_| match match_.stack_height {
+                Some(stack_height) => Some(
+                    stack_height
+                        .saturating_add(if match_.kind == Kind::Opening { 1 } else { 0 })
+                        .saturating_sub(unmatched_opening_count),
+                ),
+                None => {
+                    if matches!(match_.token, Token::Delimiter(_, _)) {
+                        match match_.kind {
+                            Kind::Opening => {
+                                unmatched_opening_count = unmatched_opening_count.saturating_add(1)
+                            }
+                            Kind::Closing => {
+                                unmatched_opening_count = unmatched_opening_count.saturating_sub(1)
+                            }
+                            Kind::NonPair => {}
+                        };
+                    }
+                    None
+                }
             })
-        })
     }
 
     pub fn stack_height_at(&self, line_number: usize, col: usize) -> usize {
@@ -511,7 +507,7 @@ impl ParsedBuffer {
             if match_.kind == Kind::Opening
                 && match_.token.opening() == opening
                 && match_.token.closing() == Some(closing)
-                && match_.stack_height == None
+                && match_.stack_height.is_none()
                 && current_stack_height == lowest_stack_height
             {
                 return Some(match_);
@@ -629,6 +625,78 @@ mod tests {
         assert_eq!(
             buffer.unmatched_closing_after("[", "]", 0, 1),
             Some(Match::delimiter(']', 2, None).with_line(0))
+        );
+    }
+
+    #[test]
+    fn test_rebalanced_matching() {
+        let buffer = parse("rust", &["{", "\t{", "\t", "}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, Some(0))],
+                vec![Match::delimiter('{', 1, None)],
+                vec![],
+                vec![Match::delimiter('}', 0, Some(0))],
+            ]
+        );
+
+        let buffer = parse("rust", &["{", "\t{", "\t}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, None)],
+                vec![Match::delimiter('{', 1, Some(1))],
+                vec![Match::delimiter('}', 1, Some(1))],
+            ]
+        );
+
+        let buffer = parse("rust", &["{", "\t{", "\t}", "}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, Some(0))],
+                vec![Match::delimiter('{', 1, Some(1))],
+                vec![Match::delimiter('}', 1, Some(1))],
+                vec![Match::delimiter('}', 0, Some(0))],
+            ]
+        );
+
+        let buffer = parse("rust", &["{", "\t{", "\t\t{", "\t\t}", "}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, Some(0))],
+                vec![Match::delimiter('{', 1, None)],
+                vec![Match::delimiter('{', 2, Some(2))],
+                vec![Match::delimiter('}', 2, Some(2))],
+                vec![Match::delimiter('}', 0, Some(0))],
+            ]
+        );
+
+        let buffer = parse("rust", &["{", "\t{", "\t\t{", "\t\t}", "\t}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, None)],
+                vec![Match::delimiter('{', 1, Some(1))],
+                vec![Match::delimiter('{', 2, Some(2))],
+                vec![Match::delimiter('}', 2, Some(2))],
+                vec![Match::delimiter('}', 1, Some(1))],
+            ]
+        );
+
+        let buffer = parse("rust", &["{", "\t{", "\t\t{", "\t\t}", "\t{", "}"]);
+        assert_eq!(
+            buffer.matches_by_line,
+            vec![
+                vec![Match::delimiter('{', 0, Some(0))],
+                vec![Match::delimiter('{', 1, None)],
+                vec![Match::delimiter('{', 2, Some(2))],
+                vec![Match::delimiter('}', 2, Some(2))],
+                vec![Match::delimiter('{', 1, None)],
+                vec![Match::delimiter('}', 0, Some(0))],
+            ]
         );
     }
 }
