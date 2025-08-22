@@ -207,11 +207,11 @@ end
 --- @param rules blink.pairs.Rule[]
 function mappings.enter(rules)
   return function()
-    if not mappings.is_enabled() or vim.api.nvim_get_mode().mode == 'c' then return '<CR>' end
+    if not mappings.is_enabled() or vim.api.nvim_get_mode().mode == 'c' then return '<C-]><CR>' end
 
     local ctx = require('blink.pairs.context').new()
     local rule, surrounding_space = rule_lib.get_surrounding(ctx, rules, 'enter')
-    if rule == nil then return '<CR>' end
+    if rule == nil then return '<C-]><CR>' end
 
     if surrounding_space then return mappings.shift_keycode(1) .. '<BS><BS>' .. '<CR><C-o>O' end
 
@@ -226,11 +226,11 @@ end
 --- @param rules blink.pairs.Rule[]
 function mappings.space(rules)
   return function()
-    if not mappings.is_enabled() then return '<Space>' end
+    if not mappings.is_enabled() then return '<C-]><Space>' end
 
     local ctx = require('blink.pairs.context').new()
     local rule = rule_lib.get_surrounding(ctx, rules, 'space')
-    if rule == nil then return '<Space>' end
+    if rule == nil then return '<C-]><Space>' end
 
     -- "(|)" -> "( | )"
     return '<Space><Space>' .. mappings.shift_keycode(-1)
