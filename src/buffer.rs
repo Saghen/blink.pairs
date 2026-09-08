@@ -684,6 +684,46 @@ mod tests {
     }
 
     #[test]
+    fn test_angle_brackets() {
+        let buffer = parse("rust", &["let x: Vec<Vec<T>> = if a < b { c } else { d };"]);
+        assert_eq!(
+            buffer.matches_by_line[0],
+            vec![
+                Match::delimiter('<', 10, Some(0)),
+                Match::delimiter('<', 14, Some(1)),
+                Match::delimiter('>', 16, Some(1)),
+                Match::delimiter('>', 17, Some(0)),
+                Match::delimiter('{', 30, Some(0)),
+                Match::delimiter('}', 34, Some(0)),
+                Match::delimiter('{', 41, Some(0)),
+                Match::delimiter('}', 45, Some(0)),
+            ]
+        );
+
+        // matching and typing helpers see angle brackets like any other delimiter
+        assert_eq!(
+            buffer
+                .match_pair(0, 10)
+                .map(|(open, close)| (open.col, close.col)),
+            Some((10, 17))
+        );
+        let buffer = parse("rust", &["Vec<T", "foo::<"]);
+        assert_eq!(
+            buffer.unmatched_opening_before("<", ">", 0, 5),
+            Some(Match::delimiter('<', 3, None).with_line(0))
+        );
+        assert_eq!(
+            buffer.unmatched_opening_before("<", ">", 1, 6),
+            Some(Match::delimiter('<', 5, None).with_line(1))
+        );
+        let buffer = parse("rust", &["Vec>"]);
+        assert_eq!(
+            buffer.unmatched_closing_after("<", ">", 0, 3),
+            Some(Match::delimiter('>', 3, None).with_line(0))
+        );
+    }
+
+    #[test]
     fn test_unmatched_opening_before() {
         let buffer = parse("rust", &["("]);
         assert_eq!(buffer.unmatched_opening_before("(", ")", 0, 0), None);

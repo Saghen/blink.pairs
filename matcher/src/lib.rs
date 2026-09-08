@@ -207,6 +207,26 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         match_arms.push(close_arm.build());
     }
 
+    // 9. Angle bracket patterns, which are ambiguous with comparison operators
+    // so they're only matched when they aren't spaced like an operator
+    for (open, close) in &def.angle_brackets {
+        let open_arm = MatchArm::builder(open.to_string(), max_lookahead)
+            .if_condition(quote! { is_angle_bracket_opening(line, token.col) })
+            .body(quote! {
+                matches.push(Match::new(Kind::Opening, Token::Delimiter(#open, #close), token.col));
+                State::Normal
+            });
+        match_arms.push(open_arm.build());
+
+        let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
+            .if_condition(quote! { is_angle_bracket_closing(line, token.col) })
+            .body(quote! {
+                matches.push(Match::new(Kind::Closing, Token::Delimiter(#open, #close), token.col));
+                State::Normal
+            });
+        match_arms.push(close_arm.build());
+    }
+
     // Add fallback pattern
     let fallback_arm = quote! { _ => state };
     match_arms.push(fallback_arm);
@@ -231,13 +251,15 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             fn call(
                 &mut self,
                 matches: &mut Vec<Match>,
+                line: &[u8],
                 tokens: &[CharPos],
                 idx: &mut usize,
                 state: State,
-                token: CharPos,
                 escaped: bool,
             ) -> State
             {
+                let token = tokens[*idx];
+
                 // Generate lookahead tokens based on the calculated max lookahead
                 #lookahead_extractors
 

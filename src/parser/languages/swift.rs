@@ -7,6 +7,7 @@ define_matcher!(Swift {
         "[" => "]",
         "{" => "}"
     ],
+    angle_brackets: ["<" => ">"],
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     string: ["\"", "'"],

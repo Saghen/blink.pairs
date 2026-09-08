@@ -1,8 +1,10 @@
 use mlua::IntoLua;
 
+mod angle_bracket;
 mod token;
 mod token_type;
 
+pub use angle_bracket::*;
 pub use token::*;
 pub use token_type::*;
 
@@ -18,10 +20,10 @@ pub trait Matcher {
     fn call(
         &mut self,
         matches: &mut Vec<Match>,
+        line: &[u8],
         tokens: &[CharPos],
         idx: &mut usize,
         state: State,
-        token: CharPos,
         escaped: bool,
     ) -> State;
 }
@@ -95,6 +97,8 @@ impl Match {
             ']' => (Kind::Closing, Token::Delimiter("[", "]")),
             '(' => (Kind::Opening, Token::Delimiter("(", ")")),
             ')' => (Kind::Closing, Token::Delimiter("(", ")")),
+            '<' => (Kind::Opening, Token::Delimiter("<", ">")),
+            '>' => (Kind::Closing, Token::Delimiter("<", ">")),
             _ => panic!("Unknown token type"),
         };
 

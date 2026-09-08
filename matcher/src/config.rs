@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 pub struct MatcherDef {
     pub name: Ident,
     pub delimiters: Vec<(String, String)>,
+    pub angle_brackets: Vec<(String, String)>,
     pub line_comments: Vec<String>,
     pub block_comments: Vec<(String, String)>,
     pub strings: Vec<String>,
@@ -25,6 +26,7 @@ impl Parse for MatcherDef {
         braced!(content in input);
 
         let mut delimiters = Vec::new();
+        let mut angle_brackets = Vec::new();
         let mut line_comments = Vec::new();
         let mut block_comments = Vec::new();
         let mut strings = Vec::new();
@@ -52,8 +54,8 @@ impl Parse for MatcherDef {
 
             let section_content;
             match section_name.to_string().as_str() {
-                "delimiters" | "line_comment" | "block_comment" | "string" | "char"
-                | "block_string" => {
+                "delimiters" | "angle_brackets" | "line_comment" | "block_comment" | "string"
+                | "char" | "block_string" => {
                     bracketed!(section_content in content);
                 }
                 "inline_span" | "block_span" => {
@@ -63,12 +65,17 @@ impl Parse for MatcherDef {
             }
 
             match section_name.to_string().as_str() {
-                "delimiters" => {
+                "delimiters" | "angle_brackets" => {
+                    let target = if section_name == "delimiters" {
+                        &mut delimiters
+                    } else {
+                        &mut angle_brackets
+                    };
                     while !section_content.is_empty() {
                         let open = get_single_char(section_content.parse::<LitStr>()?)?;
                         section_content.parse::<FatArrow>()?;
                         let close = get_single_char(section_content.parse::<LitStr>()?)?;
-                        delimiters.push((open, close));
+                        target.push((open, close));
 
                         if !section_content.is_empty() {
                             section_content.parse::<Comma>()?;
@@ -163,6 +170,7 @@ impl Parse for MatcherDef {
         Ok(MatcherDef {
             name,
             delimiters,
+            angle_brackets,
             line_comments,
             block_comments,
             strings,
@@ -179,7 +187,7 @@ pub fn collect_tokens(def: &MatcherDef) -> Vec<u8> {
     let mut all_tokens = HashSet::new();
 
     // Add all token bytes
-    for (open, close) in &def.delimiters {
+    for (open, close) in def.delimiters.iter().chain(&def.angle_brackets) {
         for c in open.bytes() {
             all_tokens.insert(c);
         }

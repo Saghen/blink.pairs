@@ -3,7 +3,7 @@
 --- @field highlights blink.pairs.HighlightsConfig
 --- @field debug boolean
 
---- @type blink.pairs.ConfigStrict | blink.lib.Config
+--- @type blink.lib.Config<blink.pairs.ConfigStrict>
 local config = require('blink.lib.config').new({
   mappings = require('blink.pairs.config.mappings'),
   highlights = require('blink.pairs.config.highlights'),
