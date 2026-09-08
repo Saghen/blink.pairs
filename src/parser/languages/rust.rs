@@ -7,6 +7,7 @@ define_matcher!(Rust {
         "[" => "]",
         "{" => "}"
     ],
+    angle_brackets: ["<" => ">"],
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     char: ["'"],

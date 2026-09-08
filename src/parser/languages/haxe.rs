@@ -7,6 +7,7 @@ define_matcher!(Haxe {
         "[" => "]",
         "{" => "}"
     ],
+    angle_brackets: ["<" => ">"],
     line_comment: ["//"],
     block_comment: ["/*" => "*/"],
     char: ["'"],

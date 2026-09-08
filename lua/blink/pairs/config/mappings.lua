@@ -124,7 +124,13 @@ return {
         { '*', when = function(ctx) return ctx.ts:blacklist('asterisk').matches end, languages = { 'typst' } },
       },
       ['<'] = {
-        { '<', '>', when = function(ctx) return ctx.ts:whitelist('angle').matches end, languages = { 'rust' } },
+        {
+          '<', '>',
+          -- ambiguous with the less than operator, so only open the pair in generics
+          open = function(ctx) return ctx.ts:whitelist('angle').matches end,
+          space = false,
+          languages = { 'rust', 'typescript', 'tsx', 'java', 'c_sharp', 'kotlin', 'swift', 'dart', 'haxe' },
+        },
       },
       ['$'] = {
         { '$', languages = { 'markdown', 'markdown_inline', 'typst', 'latex', 'plaintex' } },

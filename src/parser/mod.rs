@@ -2,7 +2,9 @@ pub mod languages;
 pub mod matcher;
 pub mod parse;
 
-pub use matcher::{Kind, Match, MatchWithLine, Matcher, Token};
+pub use matcher::{
+    Kind, Match, MatchWithLine, Matcher, Token, is_angle_bracket_closing, is_angle_bracket_opening,
+};
 pub use parse::{CharPos, State, parse};
 
 use crate::buffer::ParsedBuffer;
