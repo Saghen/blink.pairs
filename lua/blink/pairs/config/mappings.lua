@@ -129,7 +129,7 @@ return {
           -- ambiguous with the less than operator, so only open the pair in generics
           open = function(ctx) return ctx.ts:whitelist('angle').matches end,
           space = false,
-          languages = { 'rust' },
+          languages = { 'rust', 'typescript', 'tsx', 'java', 'c_sharp', 'kotlin', 'swift', 'dart', 'haxe' },
         },
       },
       ['$'] = {
