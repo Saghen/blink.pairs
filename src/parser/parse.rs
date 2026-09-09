@@ -33,36 +33,20 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
     }
 
     let mut tokens = Vec::new();
-    let mut last_indent = None;
     let mut state = initial_state;
     for line in lines {
-        let mut tabs: u8 = 0;
-        let mut spaces: u8 = 0;
+        let line = line.as_bytes();
+        let indent = line.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
+        let tabs = line[..indent].iter().filter(|&&b| b == b'\t').count();
+        indents_by_line.push((tabs.min(255) as u8, (indent - tabs).min(255) as u8));
 
         tokens.clear();
-        let mut found_non_whitespace = false;
-        for (col, &byte) in line.as_bytes().iter().enumerate() {
-            if !found_non_whitespace {
-                cold_path();
-                match byte {
-                    b'\t' => tabs = tabs.saturating_add(1),
-                    b' ' => spaces = spaces.saturating_add(1),
-                    _ => found_non_whitespace = true,
-                }
-            }
+        for (col, &byte) in line.iter().enumerate() {
             if mask[byte as usize] {
                 cold_path();
                 tokens.push(CharPos { byte, col });
             }
         }
-        if !found_non_whitespace {
-            cold_path();
-            // this line is entirely whitespace, so use the previous line's indentation.
-            indents_by_line.push(last_indent.unwrap_or((tabs, spaces)));
-        } else {
-            indents_by_line.push((tabs, spaces));
-        }
-        last_indent = Some((tabs, spaces));
 
         let mut line_matches = Vec::new();
         let mut escaped_col = None;
@@ -83,7 +67,7 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
 
             state = matcher.call(
                 &mut line_matches,
-                line.as_bytes(),
+                line,
                 &tokens,
                 &mut idx,
                 state,
