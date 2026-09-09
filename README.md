@@ -6,7 +6,7 @@
 	Intelligent auto-pairs with rainbow highlighting for Neovim
 </p>
 
-**blink.pairs** combines auto-pairs with rainbow highlighting, via a custom internal parser. The parser takes ~2ms to parse a 400k character file, and ~0.15ms for incremental updates. It uses indent-aware matching of delimiters and highlights mismatched pairs. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
+**blink.pairs** combines auto-pairs with rainbow highlighting, via a custom internal parser. The parser takes ~1ms to parse a 400k character file, and ~0.005ms for incremental updates. It uses indent-aware matching of delimiters and highlights mismatched pairs. See [the roadmap](https://github.com/Saghen/blink.pairs/issues/9) for the current status, contributions welcome!
 
 - Works out of the box with no additional configuration
 - Rainbow highlighting of pairs
