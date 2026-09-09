@@ -154,7 +154,7 @@ mod tests {
         assert_eq!(
             parse("c", "// comment {}\n}"),
             vec![
-                vec![Match::line_comment("//", 0)],
+                vec![Match::new(Kind::NonPair, &Token::LineComment("//"), 0)],
                 vec![Match::delimiter('}', 0, None)],
             ]
         );
@@ -182,7 +182,7 @@ mod tests {
             .map(|matches| {
                 matches
                     .into_iter()
-                    .filter(|m| m.token == Token::Delimiter("<", ">"))
+                    .filter(|m| *m.token == Token::Delimiter("<", ">"))
                     .map(|m| (m.col, m.kind == Kind::Opening))
                     .collect()
             })
@@ -327,7 +327,7 @@ mod tests {
                     Match::delimiter('(', 10, None),
                     Match::delimiter(')', 18, None)
                 ],
-                vec![Match::line_comment("%", 0)]
+                vec![Match::new(Kind::NonPair, &Token::LineComment("%"), 0)]
             ]
         );
     }

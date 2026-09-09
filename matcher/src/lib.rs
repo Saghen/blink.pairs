@@ -32,7 +32,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let open_arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
             matches.push(Match::new(
                 Kind::Opening,
-                Token::BlockComment(#open, #close),
+                &Token::BlockComment(#open, #close),
                 token.col,
             ));
             *idx += #open_skip;
@@ -46,7 +46,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             .body(quote! {
                 matches.push(Match::new(
                     Kind::Closing,
-                    Token::BlockComment(#open, #close),
+                    &Token::BlockComment(#open, #close),
                     token.col,
                 ));
                 *idx += #close_skip;
@@ -61,7 +61,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let open_arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
             matches.push(Match::new(
                 Kind::Opening,
-                Token::BlockString(#open, #close),
+                &Token::BlockString(#open, #close),
                 token.col,
             ));
             *idx += #open_skip;
@@ -76,7 +76,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             .body(quote! {
                 matches.push(Match::new(
                     Kind::Closing,
-                    Token::BlockString(#open, #close),
+                    &Token::BlockString(#open, #close),
                     token.col,
                 ));
                 *idx += #close_skip;
@@ -89,7 +89,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
     for (name, (open, close)) in &def.block_spans {
         let open_skip = open.len() - 1;
         let arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::new(Kind::Opening, Token::BlockSpan(#name, #open, #close), token.col));
+            matches.push(Match::new(Kind::Opening, &Token::BlockSpan(#name, #open, #close), token.col));
             *idx += #open_skip;
             State::InBlockSpan(#name)
         });
@@ -99,7 +99,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
             .input_state(quote! { State::InBlockSpan(#name) })
             .body(quote! {
-                matches.push(Match::new(Kind::Closing, Token::BlockSpan(#name, #open, #close), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::BlockSpan(#name, #open, #close), token.col));
                 *idx += #close_skip;
                 State::Normal
             });
@@ -112,7 +112,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let arm = MatchArm::builder(comment.to_string(), max_lookahead)
             .ignore_escaped()
             .body(quote! {
-                matches.push(Match::line_comment(#comment, token.col));
+                matches.push(Match::new(Kind::NonPair, &Token::LineComment(#comment), token.col));
                 *idx += #comment_skip;
                 State::InLineComment
             });
@@ -124,7 +124,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let delim_skip = delim.len() - 1;
         // Opening string
         let open_arm = MatchArm::builder(delim.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::new(Kind::Opening, Token::String(#delim), token.col));
+            matches.push(Match::new(Kind::Opening, &Token::String(#delim), token.col));
             *idx += #delim_skip;
             State::InString(#delim)
         });
@@ -135,7 +135,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             .ignore_escaped()
             .input_state(quote! { State::InString(#delim) })
             .body(quote! {
-                matches.push(Match::new(Kind::Closing, Token::String(#delim), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::String(#delim), token.col));
                 *idx += #delim_skip;
                 State::Normal
             });
@@ -150,8 +150,8 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             .non_adjacent()
             .if_condition(quote! { token_1_byte == #delim_byte && (token_1_distance == 1 || token_1_distance == 2) })
             .body(quote! {
-                matches.push(Match::new(Kind::Opening, Token::String(#delim), token.col));
-                matches.push(Match::new(Kind::Closing, Token::String(#delim), (token.col + token_1_distance)));
+                matches.push(Match::new(Kind::Opening, &Token::String(#delim), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::String(#delim), (token.col + token_1_distance)));
                 *idx += 1;
                 State::Normal
             });
@@ -161,8 +161,8 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
             .non_adjacent()
             .if_condition(quote! { token_2_byte == #delim_byte && token_2_distance == 2 })
             .body(quote! {
-                matches.push(Match::new(Kind::Opening, Token::String(#delim), token.col));
-                matches.push(Match::new(Kind::Closing, Token::String(#delim), (token.col + token_2_distance)));
+                matches.push(Match::new(Kind::Opening, &Token::String(#delim), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::String(#delim), (token.col + token_2_distance)));
                 *idx += 2;
                 State::Normal
             });
@@ -173,7 +173,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
     for (name, (open, close)) in &def.inline_spans {
         let open_skip = open.len() - 1;
         let arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::new(Kind::Opening, Token::InlineSpan(#name, #open, #close), token.col));
+            matches.push(Match::new(Kind::Opening, &Token::InlineSpan(#name, #open, #close), token.col));
             *idx += #open_skip;
             State::InInlineSpan(#name)
         });
@@ -183,7 +183,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
             .input_state(quote! { State::InInlineSpan(#name) })
             .body(quote! {
-                matches.push(Match::new(Kind::Closing, Token::InlineSpan(#name, #open, #close), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::InlineSpan(#name, #open, #close), token.col));
                 *idx += #close_skip;
                 State::Normal
             });
@@ -194,14 +194,14 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
     for (open, close) in &def.delimiters {
         // Opening delimiter
         let open_arm = MatchArm::builder(open.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::new(Kind::Opening, Token::Delimiter(#open, #close), token.col));
+            matches.push(Match::new(Kind::Opening, &Token::Delimiter(#open, #close), token.col));
             State::Normal
         });
         match_arms.push(open_arm.build());
 
         // Closing delimiter
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead).body(quote! {
-            matches.push(Match::new(Kind::Closing, Token::Delimiter(#open, #close), token.col));
+            matches.push(Match::new(Kind::Closing, &Token::Delimiter(#open, #close), token.col));
             State::Normal
         });
         match_arms.push(close_arm.build());
@@ -213,7 +213,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let open_arm = MatchArm::builder(open.to_string(), max_lookahead)
             .if_condition(quote! { is_angle_bracket_opening(line, token.col) })
             .body(quote! {
-                matches.push(Match::new(Kind::Opening, Token::Delimiter(#open, #close), token.col));
+                matches.push(Match::new(Kind::Opening, &Token::Delimiter(#open, #close), token.col));
                 State::Normal
             });
         match_arms.push(open_arm.build());
@@ -221,7 +221,7 @@ pub fn define_matcher(input: TokenStream) -> TokenStream {
         let close_arm = MatchArm::builder(close.to_string(), max_lookahead)
             .if_condition(quote! { is_angle_bracket_closing(line, token.col) })
             .body(quote! {
-                matches.push(Match::new(Kind::Closing, Token::Delimiter(#open, #close), token.col));
+                matches.push(Match::new(Kind::Closing, &Token::Delimiter(#open, #close), token.col));
                 State::Normal
             });
         match_arms.push(close_arm.build());

@@ -67,7 +67,7 @@ fn get_line_matches(
         .map_or(Vec::new(), |matches| {
             matches
                 .iter()
-                .filter(|m| token_type.matches(&m.token))
+                .filter(|m| token_type.matches(m.token))
                 .cloned()
                 .collect()
         }))

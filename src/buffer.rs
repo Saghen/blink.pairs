@@ -177,7 +177,7 @@ impl ParsedBuffer {
                     .map(|sh| sh >= stack_height.saturating_add(1))
                     .unwrap_or(true)
             })
-            .filter(|match_| match_.token == token.clone())
+            .filter(|match_| match_.token == token)
             .flat_map(|match_| self.match_pair(match_.line, match_.col))
             .find(|(open, close)| {
                 self.rounded_indent_level(close.line, tab_width) == indent_level
@@ -772,7 +772,7 @@ mod tests {
         assert_eq!(buffer.unterminated_opening_before("\"", 0, 0), None);
         assert_eq!(
             buffer.unterminated_opening_before("\"", 0, 4),
-            Some(Match::new(Kind::Opening, Token::String("\""), 0).with_line(0))
+            Some(Match::new(Kind::Opening, &Token::String("\""), 0).with_line(0))
         );
         // Different string type
         assert_eq!(buffer.unterminated_opening_before("'", 0, 4), None);
@@ -790,7 +790,7 @@ mod tests {
         assert_eq!(buffer.unterminated_opening_before("\"", 0, 6), None);
         assert_eq!(
             buffer.unterminated_opening_before("\"", 0, 11),
-            Some(Match::new(Kind::Opening, Token::String("\""), 7).with_line(0))
+            Some(Match::new(Kind::Opening, &Token::String("\""), 7).with_line(0))
         );
 
         // -- "foo|
@@ -801,7 +801,7 @@ mod tests {
         let buffer = parse("lua", &["[[foo", "bar"]);
         assert_eq!(
             buffer.unterminated_opening_before("[[", 1, 3),
-            Some(Match::new(Kind::Opening, Token::BlockString("[[", "]]"), 0).with_line(0))
+            Some(Match::new(Kind::Opening, &Token::BlockString("[[", "]]"), 0).with_line(0))
         );
         assert_eq!(buffer.unterminated_opening_before("\"", 1, 3), None);
         let buffer = parse("lua", &["[[foo", "bar", "]]"]);
@@ -821,7 +821,7 @@ mod tests {
         let buffer = parse("lua", &["foo\""]);
         assert_eq!(
             buffer.unterminated_opening_after("\"", 0, 0),
-            Some(Match::new(Kind::Opening, Token::String("\""), 3).with_line(0))
+            Some(Match::new(Kind::Opening, &Token::String("\""), 3).with_line(0))
         );
         assert_eq!(buffer.unterminated_opening_after("\"", 0, 4), None);
         assert_eq!(buffer.unterminated_opening_after("'", 0, 0), None);
@@ -834,7 +834,7 @@ mod tests {
         let buffer = parse("lua", &["foo\"bar\"baz\""]);
         assert_eq!(
             buffer.unterminated_opening_after("\"", 0, 0),
-            Some(Match::new(Kind::Opening, Token::String("\""), 11).with_line(0))
+            Some(Match::new(Kind::Opening, &Token::String("\""), 11).with_line(0))
         );
 
         // Only for tokens with the same opening and closing

@@ -7,7 +7,7 @@ pub enum Kind {
     NonPair,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Token {
     Delimiter(&'static str, &'static str),
 

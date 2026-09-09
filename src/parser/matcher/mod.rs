@@ -27,13 +27,13 @@ pub trait Matcher {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Match {
     pub kind: Kind,
-    pub token: Token,
+    pub token: &'static Token,
     pub col: usize,
     pub stack_height: Option<usize>,
 }
 
 impl Match {
-    pub fn new(kind: Kind, token: Token, col: usize) -> Self {
+    pub fn new(kind: Kind, token: &'static Token, col: usize) -> Self {
         Self {
             kind,
             token,
@@ -46,21 +46,13 @@ impl Match {
     pub fn with_line(&self, line: usize) -> MatchWithLine {
         MatchWithLine {
             kind: self.kind,
-            token: self.token.clone(),
+            token: self.token,
             line,
             col: self.col,
             stack_height: self.stack_height,
         }
     }
 
-    pub fn line_comment(text: &'static str, col: usize) -> Self {
-        Self {
-            kind: Kind::NonPair,
-            token: Token::LineComment(text),
-            col,
-            stack_height: None,
-        }
-    }
 
     #[expect(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
@@ -79,14 +71,14 @@ impl Match {
 impl Match {
     pub fn delimiter(char: char, col: usize, stack_height: Option<usize>) -> Self {
         let (kind, token) = match char {
-            '{' => (Kind::Opening, Token::Delimiter("{", "}")),
-            '}' => (Kind::Closing, Token::Delimiter("{", "}")),
-            '[' => (Kind::Opening, Token::Delimiter("[", "]")),
-            ']' => (Kind::Closing, Token::Delimiter("[", "]")),
-            '(' => (Kind::Opening, Token::Delimiter("(", ")")),
-            ')' => (Kind::Closing, Token::Delimiter("(", ")")),
-            '<' => (Kind::Opening, Token::Delimiter("<", ">")),
-            '>' => (Kind::Closing, Token::Delimiter("<", ">")),
+            '{' => (Kind::Opening, &Token::Delimiter("{", "}")),
+            '}' => (Kind::Closing, &Token::Delimiter("{", "}")),
+            '[' => (Kind::Opening, &Token::Delimiter("[", "]")),
+            ']' => (Kind::Closing, &Token::Delimiter("[", "]")),
+            '(' => (Kind::Opening, &Token::Delimiter("(", ")")),
+            ')' => (Kind::Closing, &Token::Delimiter("(", ")")),
+            '<' => (Kind::Opening, &Token::Delimiter("<", ">")),
+            '>' => (Kind::Closing, &Token::Delimiter("<", ">")),
             _ => panic!("Unknown token type"),
         };
 
@@ -100,8 +92,8 @@ impl Match {
 
     pub fn block_comment(text: &'static str, col: usize) -> Self {
         let (kind, token) = match text {
-            "/*" => (Kind::Opening, Token::BlockComment("/*", "*/")),
-            "*/" => (Kind::Closing, Token::BlockComment("/*", "*/")),
+            "/*" => (Kind::Opening, &Token::BlockComment("/*", "*/")),
+            "*/" => (Kind::Closing, &Token::BlockComment("/*", "*/")),
             _ => panic!("Unknown token type"),
         };
         Self {
@@ -123,7 +115,7 @@ impl IntoLua for Match {
         }
         match self.token {
             Token::InlineSpan(span, _, _) | Token::BlockSpan(span, _, _) => {
-                table.set("span", span)?;
+                table.set("span", *span)?;
             }
             _ => {}
         }
@@ -138,7 +130,7 @@ impl IntoLua for Match {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MatchWithLine {
     pub kind: Kind,
-    pub token: Token,
+    pub token: &'static Token,
     pub line: usize,
     pub col: usize,
     pub stack_height: Option<usize>,
@@ -154,7 +146,7 @@ impl IntoLua for MatchWithLine {
         }
         match self.token {
             Token::InlineSpan(span, _, _) | Token::BlockSpan(span, _, _) => {
-                table.set("span", span)?;
+                table.set("span", *span)?;
             }
             _ => {}
         }
