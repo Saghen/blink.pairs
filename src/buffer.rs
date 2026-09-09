@@ -1,6 +1,12 @@
-use crate::parser::{Kind, Match, MatchWithLine, State, Token, parse_filetype, supports_filetype};
+use crate::parser::{
+    Kind, Match, MatchWithLine, State, Token, supports_filetype, tokenize_filetype,
+};
+use std::iter::repeat_n;
+use std::ops::Range;
 
+#[derive(Default)]
 pub struct ParsedBuffer {
+    pub lines: Vec<Box<[u8]>>,
     pub matches_by_line: Vec<Vec<Match>>,
     pub indents_by_line: Vec<(u8, u8)>,
     pub state_by_line: Vec<State>,
@@ -11,66 +17,62 @@ impl ParsedBuffer {
         supports_filetype(filetype)
     }
 
-    pub fn parse(filetype: &str, tab_width: u8, lines: &[&str]) -> Option<Self> {
-        let mut parsed = parse_filetype(filetype, lines, State::Normal)?;
-        parsed.calculate_stack_heights(tab_width);
+    pub fn parse(filetype: &str, tab_width: u8, lines: Vec<Box<[u8]>>) -> Option<Self> {
+        let mut parsed = Self::default();
+        parsed.reparse_range(filetype, tab_width, lines, 0, 0)?;
         Some(parsed)
     }
 
+    /// Replaces `start_line..old_end_line` with `lines` and reparses. Returns the range of lines
+    /// whose matches may have changed, or `None` if the filetype is unsupported.
     pub fn reparse_range(
         &mut self,
         filetype: &str,
         tab_width: u8,
-        lines: &[&str],
-        start_line: Option<usize>,
-        old_end_line: Option<usize>,
-    ) -> (bool, bool) {
-        let max_line = self.matches_by_line.len();
-        let start_line = start_line.unwrap_or(0).min(max_line);
-        let old_end_line = old_end_line.unwrap_or(max_line).min(max_line);
+        lines: Vec<Box<[u8]>>,
+        start_line: usize,
+        old_end_line: usize,
+    ) -> Option<Range<usize>> {
+        let start = start_line.min(self.lines.len());
+        let old_end = old_end_line.clamp(start, self.lines.len());
+        let new_end = start + lines.len();
 
-        let initial_state = if start_line > 0 {
-            self.state_by_line
-                .get(start_line - 1)
-                .cloned()
-                .unwrap_or(State::Normal)
-        } else {
-            State::Normal
+        let state_before = |line: usize| match line.checked_sub(1) {
+            Some(line) => self.state_by_line[line],
+            None => State::Normal,
         };
+        let initial_state = state_before(start);
+        let old_end_state = state_before(old_end);
 
-        // Capture the state at the end of the replaced range before splicing
-        let old_end_state = self
-            .state_by_line
-            .get(old_end_line.saturating_sub(1))
-            .cloned()
-            .unwrap_or(State::Normal);
+        let count = new_end - start;
+        self.lines.splice(start..old_end, lines);
+        self.matches_by_line.splice(start..old_end, repeat_n(Vec::new(), count));
+        self.indents_by_line.splice(start..old_end, repeat_n((0, 0), count));
+        self.state_by_line.splice(start..old_end, repeat_n(State::Normal, count));
 
-        let Some(new) = parse_filetype(filetype, lines, initial_state) else {
-            return (false, false);
-        };
-
-        // Use lines.len() as authoritative length to avoid index mismatch
-        // when start_line is clamped by max_line
-        let length = lines.len();
-
-        let new_end_state = new.state_by_line.last().cloned().unwrap_or(State::Normal);
-
-        self.matches_by_line.splice(
-            start_line..old_end_line,
-            new.matches_by_line.into_iter().take(length),
-        );
-        self.state_by_line.splice(
-            start_line..old_end_line,
-            new.state_by_line.into_iter().take(length),
-        );
-        self.indents_by_line.splice(
-            start_line..old_end_line.min(self.indents_by_line.len()),
-            new.indents_by_line.into_iter().take(length),
-        );
+        // Tokenize the new lines, continuing past them while the state at the end of the line
+        // differs from before the edit (e.g. after opening a block comment)
+        let tokenizer = tokenize_filetype(
+            filetype,
+            self.lines[start..].iter().map(|line| &**line),
+            initial_state,
+        )?;
+        for (line, (matches, indent, state)) in (start..).zip(tokenizer) {
+            let old_state = if line < new_end {
+                old_end_state
+            } else {
+                self.state_by_line[line]
+            };
+            self.matches_by_line[line] = matches;
+            self.indents_by_line[line] = indent;
+            self.state_by_line[line] = state;
+            if line + 1 >= new_end && state == old_state {
+                break;
+            }
+        }
 
         self.calculate_stack_heights(tab_width);
-
-        (true, old_end_state != new_end_state)
+        Some(0..self.lines.len())
     }
 
     fn calculate_stack_heights(&mut self, tab_width: u8) {
@@ -676,7 +678,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn parse(filetype: &str, lines: &[&str]) -> ParsedBuffer {
-        ParsedBuffer::parse(filetype, 4, lines).unwrap()
+        ParsedBuffer::parse(filetype, 4, lines.iter().map(|l| l.as_bytes().into()).collect()).unwrap()
     }
 
     #[test]
@@ -840,6 +842,64 @@ mod tests {
         // Only for tokens with the same opening and closing
         let buffer = parse("lua", &["foo[["]);
         assert_eq!(buffer.unterminated_opening_after("[[", 0, 0), None);
+    }
+
+    /// Applies random edits (and undoes them) incrementally, checking the result against a
+    /// fresh full parse each time
+    #[test]
+    fn test_incremental_matches_full_parse() {
+        let sources = [
+            ("c", include_str!("../benches/languages/c.c")),
+            ("rust", include_str!("../benches/languages/rust.rs")),
+        ];
+        #[rustfmt::skip]
+        let snippets: &[&[u8]] = &[
+            b"", b"x", b"foo(bar[1]) {}", b"\"str\" 'c'", b"/* {} */", b"// (", b"Vec<T>", b"a < b",
+            b"{", b"}", b"(", b")", b"\"", b"/*", b"*/", b"'\"'",
+        ];
+        let mut seed = 0x2545F4914F6CDD1Du64;
+        let mut rand = |n: usize| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed % n.max(1) as u64) as usize
+        };
+
+        for (filetype, src) in sources {
+            let mut lines: Vec<Box<[u8]>> = src.lines().map(|l| l.as_bytes().into()).collect();
+            let mut incremental = ParsedBuffer::parse(filetype, 4, lines.clone()).unwrap();
+            let mut undo = None;
+            for _ in 0..600 {
+                // undo the previous edit, or keep accumulating edits
+                let (start, old_end, new_lines) = match undo.take() {
+                    Some(edit) if rand(2) == 0 => edit,
+                    _ => {
+                        let start = rand(lines.len() + 1);
+                        let old_end = (start + rand(3)).min(lines.len());
+                        let new_lines: Vec<Box<[u8]>> = (0..rand(4))
+                            .map(|_| snippets[rand(snippets.len())].into())
+                            .collect();
+                        undo = Some((start, start + new_lines.len(), lines[start..old_end].to_vec()));
+                        (start, old_end, new_lines)
+                    }
+                };
+                lines.splice(start..old_end, new_lines.clone());
+                let dirty = incremental
+                    .reparse_range(filetype, 4, new_lines, start, old_end)
+                    .unwrap();
+                let full = ParsedBuffer::parse(filetype, 4, lines.clone()).unwrap();
+
+                assert_eq!(incremental.lines, lines);
+                assert_eq!(incremental.state_by_line, full.state_by_line);
+                assert_eq!(incremental.indents_by_line, full.indents_by_line);
+                for line in 0..lines.len() {
+                    assert_eq!(
+                        incremental.matches_by_line[line], full.matches_by_line[line],
+                        "line {line} (edit {start}..{old_end}, dirty {dirty:?})"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

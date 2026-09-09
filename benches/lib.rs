@@ -1,21 +1,25 @@
-use blink_pairs_parser::parser::{parse_filetype, State};
-use criterion::{criterion_group, criterion_main, Criterion};
+use blink_pairs_parser::parser::{State, tokenize_filetype};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
 
 fn criterion_benches(c: &mut Criterion) {
-    let c_lines = include_str!("./languages/c.c")
-        .lines()
-        .collect::<Box<[_]>>();
-    let rust_lines = include_str!("./languages/rust.rs")
-        .lines()
-        .collect::<Box<[_]>>();
+    let c_src = include_str!("./languages/c.c");
+    let rust_src = include_str!("./languages/rust.rs");
 
     c.bench_function("parse simd - c", |b| {
-        b.iter(|| parse_filetype("c", black_box(&c_lines), State::Normal))
+        b.iter(|| {
+            tokenize_filetype("c", black_box(c_src).lines().map(str::as_bytes), State::Normal)
+                .unwrap()
+                .count()
+        })
     });
 
     c.bench_function("parse simd - rust", |b| {
-        b.iter(|| parse_filetype("rust", black_box(&rust_lines), State::Normal))
+        b.iter(|| {
+            tokenize_filetype("rust", black_box(rust_src).lines().map(str::as_bytes), State::Normal)
+                .unwrap()
+                .count()
+        })
     });
 }
 

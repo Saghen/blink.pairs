@@ -1,6 +1,4 @@
-use crate::buffer::ParsedBuffer;
-
-use super::matcher::Matcher;
+use super::matcher::{Match, Matcher};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CharPos {
@@ -19,13 +17,15 @@ pub enum State {
     InBlockSpan(&'static str),
 }
 
-/// Given a matcher, runs the tokenizer on the lines and keeps track
-/// of the state and matches for each line
-pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -> ParsedBuffer {
-    let mut matches_by_line = Vec::with_capacity(lines.len());
-    let mut indents_by_line = Vec::with_capacity(lines.len());
-    let mut state_by_line = Vec::with_capacity(lines.len());
+/// The matches on a line, its indentation `(tabs, spaces)` and the parser state at its end
+pub type TokenizedLine = (Vec<Match>, (u8, u8), State);
 
+/// Tokenizes each line, tracking the parser state across lines
+pub fn tokenize<'a, M: Matcher + 'a>(
+    lines: impl Iterator<Item = &'a [u8]> + 'a,
+    initial_state: State,
+    mut matcher: M,
+) -> impl Iterator<Item = TokenizedLine> + 'a {
     let mut mask = [false; 256];
     mask[b'\\' as usize] = true;
     for &token in M::TOKENS {
@@ -34,11 +34,10 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
 
     let mut tokens = Vec::new();
     let mut state = initial_state;
-    for line in lines {
-        let line = line.as_bytes();
+    lines.map(move |line| {
         let indent = line.iter().take_while(|&&b| b == b' ' || b == b'\t').count();
         let tabs = line[..indent].iter().filter(|&&b| b == b'\t').count();
-        indents_by_line.push((tabs.min(255) as u8, (indent - tabs).min(255) as u8));
+        let indent = (tabs.min(255) as u8, (indent - tabs).min(255) as u8);
 
         tokens.clear();
         for (col, &byte) in line.iter().enumerate() {
@@ -87,15 +86,8 @@ pub fn parse<M: Matcher>(lines: &[&str], initial_state: State, mut matcher: M) -
         ) {
             state = State::Normal;
         }
-        matches_by_line.push(line_matches);
-        state_by_line.push(state);
-    }
-
-    ParsedBuffer {
-        matches_by_line,
-        indents_by_line,
-        state_by_line,
-    }
+        (line_matches, indent, state)
+    })
 }
 
 /// [`std::hint::cold_path`] intrinsic, when it is available (i.e., rust is at
@@ -113,16 +105,13 @@ fn cold_path() {
 // TODO: come up with a better way to do testing
 #[cfg(test)]
 mod tests {
-    use crate::parser::{Kind, Match, State, Token, parse_filetype};
+    use crate::parser::{Kind, Match, Token, tokenize_filetype, State};
 
     fn parse(filetype: &str, lines: &str) -> Vec<Vec<Match>> {
-        parse_filetype(
-            filetype,
-            &lines.split('\n').collect::<Vec<_>>(),
-            State::Normal,
-        )
-        .unwrap()
-        .matches_by_line
+        tokenize_filetype(filetype, lines.split('\n').map(str::as_bytes), State::Normal)
+            .unwrap()
+            .map(|(matches, _, _)| matches)
+            .collect()
     }
 
     #[test]

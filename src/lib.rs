@@ -17,34 +17,55 @@ fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
     PARSED_BUFFERS.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
+/// Parses `text`, the lines `start_line..new_end_line` joined by newlines, replacing
+/// `start_line..old_end_line`. Parses the whole buffer when the range is omitted. Returns whether
+/// the filetype is supported and the range of lines whose matches may have changed.
 fn parse_buffer(
     _lua: &Lua,
-    (bufnr, tab_width, filetype, lines, start_line, old_end_line): (
+    (bufnr, tab_width, filetype, text, start_line, old_end_line, new_end_line): (
         usize,
         u8,
         String,
-        Vec<String>,
+        LuaString,
+        Option<usize>,
         Option<usize>,
         Option<usize>,
     ),
-) -> LuaResult<(bool, bool)> {
-    let lines_ref = lines.iter().map(|str| str.as_ref()).collect::<Vec<_>>();
+) -> LuaResult<(bool, usize, usize)> {
+    let mut lines: Vec<Box<[u8]>> = text
+        .as_bytes()
+        .split(|&b| b == b'\n')
+        .map(Box::from)
+        .collect();
+    // an empty string splits into one empty line, which is wrong when no lines were sent
+    if let (Some(start), Some(end)) = (start_line, new_end_line) {
+        lines.truncate(end.saturating_sub(start));
+    }
 
     let mut parsed_buffers = get_parsed_buffers();
+    let dirty = match (start_line, parsed_buffers.get_mut(&bufnr)) {
+        (Some(start_line), Some(parsed_buffer)) => parsed_buffer.reparse_range(
+            &filetype,
+            tab_width,
+            lines,
+            start_line,
+            old_end_line.unwrap_or(usize::MAX),
+        ),
+        _ => ParsedBuffer::parse(&filetype, tab_width, lines).map(|parsed_buffer| {
+            let dirty = 0..parsed_buffer.lines.len();
+            parsed_buffers.insert(bufnr, parsed_buffer);
+            dirty
+        }),
+    };
+    Ok(match dirty {
+        Some(dirty) => (true, dirty.start, dirty.end),
+        None => (false, 0, 0),
+    })
+}
 
-    // Incremental parse
-    if start_line.is_some()
-        && let Some(parsed_buffer) = parsed_buffers.get_mut(&bufnr)
-    {
-        Ok(parsed_buffer.reparse_range(&filetype, tab_width, &lines_ref, start_line, old_end_line))
-    }
-    // Full parse
-    else if let Some(parsed_buffer) = ParsedBuffer::parse(&filetype, tab_width, &lines_ref) {
-        parsed_buffers.insert(bufnr, parsed_buffer);
-        Ok((true, false))
-    } else {
-        Ok((false, false))
-    }
+fn remove_buffer(_lua: &Lua, (bufnr,): (usize,)) -> LuaResult<()> {
+    get_parsed_buffers().remove(&bufnr);
+    Ok(())
 }
 
 fn supports_filetype(_lua: &Lua, (filetype,): (String,)) -> LuaResult<bool> {
@@ -141,6 +162,7 @@ fn get_unterminated_opening_after(
         .and_then(|parsed_buffer| parsed_buffer.unterminated_opening_after(&opening, row, col)))
 }
 
+
 // NOTE: skip_memory_check greatly improves performance
 // https://github.com/mlua-rs/mlua/issues/318
 #[mlua::lua_module(skip_memory_check)]
@@ -150,6 +172,7 @@ fn blink_pairs_parser(lua: &Lua) -> LuaResult<LuaTable> {
 
     let exports = lua.create_table()?;
     exports.set("parse_buffer", lua.create_function(parse_buffer)?)?;
+    exports.set("remove_buffer", lua.create_function(remove_buffer)?)?;
     exports.set("supports_filetype", lua.create_function(supports_filetype)?)?;
     exports.set("get_line_matches", lua.create_function(get_line_matches)?)?;
     exports.set("get_span_at", lua.create_function(get_span_at)?)?;

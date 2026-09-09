@@ -1,5 +1,6 @@
 --- @class blink.pairs.Parser
---- @field parse_buffer fun(bufnr: number?, shiftwidth: number, filetype: string, lines: string[], start_line: number?, old_end_line: number?, new_end_line: number?): boolean
+--- @field parse_buffer fun(bufnr: number, tab_width: number, filetype: string, text: string, start_line: number?, old_end_line: number?, new_end_line: number?): boolean, number, number
+--- @field remove_buffer fun(bufnr: number)
 --- @field supports_filetype fun(filetype: string): boolean
 --- @field get_line_matches fun(bufnr: number, line_number: number, token_type: number?): blink.pairs.Match[]
 --- @field get_span_at fun(bufnr: number, row: number, col: number): string?

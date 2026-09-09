@@ -5,9 +5,7 @@ pub mod parse;
 pub use matcher::{
     Kind, Match, MatchWithLine, Matcher, Token, is_angle_bracket_closing, is_angle_bracket_opening,
 };
-pub use parse::{CharPos, State, parse};
-
-use crate::buffer::ParsedBuffer;
+pub use parse::{CharPos, State, TokenizedLine, tokenize};
 
 #[rustfmt::skip]
 const FILETYPES: &[&str] = &[
@@ -23,53 +21,53 @@ pub fn supports_filetype(filetype: &str) -> bool {
 }
 
 #[rustfmt::skip]
-pub fn parse_filetype(
+pub fn tokenize_filetype<'a>(
     filetype: &str,
-    lines: &[&str],
+    lines: impl Iterator<Item = &'a [u8]> + 'a,
     initial_state: State,
-) -> Option<ParsedBuffer> {
+) -> Option<Box<dyn Iterator<Item = TokenizedLine> + 'a>> {
     match filetype {
-        "c" => Some(parse(lines, initial_state, languages::C {})),
-        "clojure" => Some(parse(lines, initial_state, languages::Clojure {})),
-        "cmake" => Some(parse(lines, initial_state, languages::CMake {})),
-        "cpp" => Some(parse(lines, initial_state, languages::Cpp {})),
-        "csharp" => Some(parse(lines, initial_state, languages::CSharp {})),
-        "dart" => Some(parse(lines, initial_state, languages::Dart {})),
-        "elixir" => Some(parse(lines, initial_state, languages::Elixir {})),
-        "erlang" => Some(parse(lines, initial_state, languages::Erlang {})),
-        "fennel" => Some(parse(lines, initial_state, languages::Fennel {})),
-        "fsharp" => Some(parse(lines, initial_state, languages::FSharp {})),
-        "go" => Some(parse(lines, initial_state, languages::Go {})),
-        "haskell" => Some(parse(lines, initial_state, languages::Haskell {})),
-        "haxe" => Some(parse(lines, initial_state, languages::Haxe {})),
-        "java" => Some(parse(lines, initial_state, languages::Java {})),
+        "c" => Some(Box::new(tokenize(lines, initial_state, languages::C {}))),
+        "clojure" => Some(Box::new(tokenize(lines, initial_state, languages::Clojure {}))),
+        "cmake" => Some(Box::new(tokenize(lines, initial_state, languages::CMake {}))),
+        "cpp" => Some(Box::new(tokenize(lines, initial_state, languages::Cpp {}))),
+        "csharp" => Some(Box::new(tokenize(lines, initial_state, languages::CSharp {}))),
+        "dart" => Some(Box::new(tokenize(lines, initial_state, languages::Dart {}))),
+        "elixir" => Some(Box::new(tokenize(lines, initial_state, languages::Elixir {}))),
+        "erlang" => Some(Box::new(tokenize(lines, initial_state, languages::Erlang {}))),
+        "fennel" => Some(Box::new(tokenize(lines, initial_state, languages::Fennel {}))),
+        "fsharp" => Some(Box::new(tokenize(lines, initial_state, languages::FSharp {}))),
+        "go" => Some(Box::new(tokenize(lines, initial_state, languages::Go {}))),
+        "haskell" => Some(Box::new(tokenize(lines, initial_state, languages::Haskell {}))),
+        "haxe" => Some(Box::new(tokenize(lines, initial_state, languages::Haxe {}))),
+        "java" => Some(Box::new(tokenize(lines, initial_state, languages::Java {}))),
         "typescript" | "javascript" | "typescriptreact" | "javascriptreact" =>
-            Some(parse(lines, initial_state, languages::JavaScript {})),
-        "json" => Some(parse(lines, initial_state, languages::Json {})),
-        "kotlin" => Some(parse(lines, initial_state, languages::Kotlin {})),
-        "latex" | "tex" | "bib" => Some(parse(lines, initial_state, languages::Latex {})),
-        "lean" => Some(parse(lines, initial_state, languages::Lean {})),
-        "lua" => Some(parse(lines, initial_state, languages::Lua {})),
-        "markdown" => Some(parse(lines, initial_state, languages::Markdown {})),
-        "nix" => Some(parse(lines, initial_state, languages::Nix {})),
-        "objc" => Some(parse(lines, initial_state, languages::ObjC {})),
-        "ocaml" => Some(parse(lines, initial_state, languages::OCaml {})),
-        "perl" => Some(parse(lines, initial_state, languages::Perl {})),
-        "php" => Some(parse(lines, initial_state, languages::Php {})),
-        "python" => Some(parse(lines, initial_state, languages::Python {})),
-        "r" => Some(parse(lines, initial_state, languages::R {})),
-        "ruby" => Some(parse(lines, initial_state, languages::Ruby {})),
-        "rust" => Some(parse(lines, initial_state, languages::Rust {})),
-        "scala" => Some(parse(lines, initial_state, languages::Scala {})),
-        "scheme" => Some(parse(lines, initial_state, languages::Scheme {})),
-        "bash" | "fish" | "sh" | "zsh" => Some(parse(lines, initial_state, languages::Shell {})),
-        "sql" => Some(parse(lines, initial_state, languages::Sql {})),
-        "swift" => Some(parse(lines, initial_state, languages::Swift {})),
-        "systemverilog" | "verilog" => Some(parse(lines, initial_state, languages::SystemVerilog {})),
-        "toml" => Some(parse(lines, initial_state, languages::Toml {})),
-        "typst" => Some(parse(lines, initial_state, languages::Typst {})),
-        "vim" => Some(parse(lines, initial_state, languages::Vim {})),
-        "zig" => Some(parse(lines, initial_state, languages::Zig {})),
+            Some(Box::new(tokenize(lines, initial_state, languages::JavaScript {}))),
+        "json" => Some(Box::new(tokenize(lines, initial_state, languages::Json {}))),
+        "kotlin" => Some(Box::new(tokenize(lines, initial_state, languages::Kotlin {}))),
+        "latex" | "tex" | "bib" => Some(Box::new(tokenize(lines, initial_state, languages::Latex {}))),
+        "lean" => Some(Box::new(tokenize(lines, initial_state, languages::Lean {}))),
+        "lua" => Some(Box::new(tokenize(lines, initial_state, languages::Lua {}))),
+        "markdown" => Some(Box::new(tokenize(lines, initial_state, languages::Markdown {}))),
+        "nix" => Some(Box::new(tokenize(lines, initial_state, languages::Nix {}))),
+        "objc" => Some(Box::new(tokenize(lines, initial_state, languages::ObjC {}))),
+        "ocaml" => Some(Box::new(tokenize(lines, initial_state, languages::OCaml {}))),
+        "perl" => Some(Box::new(tokenize(lines, initial_state, languages::Perl {}))),
+        "php" => Some(Box::new(tokenize(lines, initial_state, languages::Php {}))),
+        "python" => Some(Box::new(tokenize(lines, initial_state, languages::Python {}))),
+        "r" => Some(Box::new(tokenize(lines, initial_state, languages::R {}))),
+        "ruby" => Some(Box::new(tokenize(lines, initial_state, languages::Ruby {}))),
+        "rust" => Some(Box::new(tokenize(lines, initial_state, languages::Rust {}))),
+        "scala" => Some(Box::new(tokenize(lines, initial_state, languages::Scala {}))),
+        "scheme" => Some(Box::new(tokenize(lines, initial_state, languages::Scheme {}))),
+        "bash" | "fish" | "sh" | "zsh" => Some(Box::new(tokenize(lines, initial_state, languages::Shell {}))),
+        "sql" => Some(Box::new(tokenize(lines, initial_state, languages::Sql {}))),
+        "swift" => Some(Box::new(tokenize(lines, initial_state, languages::Swift {}))),
+        "systemverilog" | "verilog" => Some(Box::new(tokenize(lines, initial_state, languages::SystemVerilog {}))),
+        "toml" => Some(Box::new(tokenize(lines, initial_state, languages::Toml {}))),
+        "typst" => Some(Box::new(tokenize(lines, initial_state, languages::Typst {}))),
+        "vim" => Some(Box::new(tokenize(lines, initial_state, languages::Vim {}))),
+        "zig" => Some(Box::new(tokenize(lines, initial_state, languages::Zig {}))),
 
         _ => None,
     }
