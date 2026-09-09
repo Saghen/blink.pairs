@@ -41,9 +41,12 @@ local function parse_buffer(bufnr, start_line, old_end_line, new_end_line)
     end
   end
 
-  local ok, filetype_supported =
+  local ok, filetype_supported, dirty_start, dirty_end =
     pcall(rust.parse_buffer, bufnr, utils.get_tab_width(bufnr), ft, text, start_line, old_end_line, new_end_line)
   local did_parse = ok and filetype_supported
+
+  -- nvim only redraws lines whose text or extmarks changed, so request the rest
+  if did_parse then vim.api.nvim__redraw({ buf = bufnr, range = { dirty_start, dirty_end }, flush = false }) end
 
   if did_parse and require('blink.pairs.config').debug then
     require('blink.pairs.logger'):notify(vim.log.levels.INFO, 'parsing time: ' .. (vim.uv.hrtime() - start_time) / 1e6 .. ' ms')
