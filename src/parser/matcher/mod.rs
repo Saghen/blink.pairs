@@ -12,10 +12,6 @@ use crate::parser::{CharPos, State};
 
 pub trait Matcher {
     const TOKENS: &[u8];
-    #[inline(always)]
-    fn tokens(&self) -> &'static [u8] {
-        Self::TOKENS
-    }
 
     fn call(
         &mut self,
@@ -46,14 +42,6 @@ impl Match {
         }
     }
 
-    pub fn new_with_stack(kind: Kind, token: Token, col: usize, stack_height: usize) -> Self {
-        Self {
-            kind,
-            token,
-            col,
-            stack_height: Some(stack_height),
-        }
-    }
 
     pub fn with_line(&self, line: usize) -> MatchWithLine {
         MatchWithLine {

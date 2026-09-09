@@ -13,16 +13,8 @@ static PARSED_BUFFERS: LazyLock<Mutex<HashMap<usize, ParsedBuffer>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn get_parsed_buffers<'a>() -> MutexGuard<'a, HashMap<usize, ParsedBuffer>> {
-    match PARSED_BUFFERS.lock() {
-        Ok(lock) => lock,
-        Err(_) => {
-            // Reset the mutex
-            PARSED_BUFFERS.clear_poison();
-            let mut parsed_buffers = PARSED_BUFFERS.lock().unwrap();
-            *parsed_buffers = HashMap::new();
-            parsed_buffers
-        }
-    }
+    // a poisoned lock only means a previous call panicked, the buffers are still usable
+    PARSED_BUFFERS.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 fn parse_buffer(
@@ -69,17 +61,16 @@ fn get_line_matches(
         .and_then(|token_type| token_type.try_into().ok())
         .unwrap_or(TokenType::Delimiter);
 
-    if let Some(parsed_buffer) = parsed_buffers.get(&bufnr) {
-        if let Some(line_matches) = parsed_buffer.line_matches(line_number) {
-            return Ok(line_matches
+    Ok(parsed_buffers
+        .get(&bufnr)
+        .and_then(|parsed_buffer| parsed_buffer.matches_by_line.get(line_number))
+        .map_or(Vec::new(), |matches| {
+            matches
                 .iter()
                 .filter(|m| token_type.matches(&m.token))
                 .cloned()
-                .collect());
-        }
-    }
-
-    Ok(Vec::new())
+                .collect()
+        }))
 }
 
 fn get_span_at(_lua: &Lua, (bufnr, row, col): (usize, usize, usize)) -> LuaResult<Option<String>> {

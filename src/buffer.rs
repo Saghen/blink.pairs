@@ -252,10 +252,6 @@ impl ParsedBuffer {
         }
     }
 
-    pub fn line_matches(&self, line_number: usize) -> Option<Vec<Match>> {
-        self.matches_by_line.get(line_number).cloned()
-    }
-
     pub fn iter_from(
         &self,
         line_number: usize,
