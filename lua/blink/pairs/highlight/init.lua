@@ -2,6 +2,30 @@ local nvim = require('blink.lib.nvim')
 
 local highlighter = {}
 local ns = nvim.create_namespace('blink.pairs')
+--- Lines with up to date extmarks
+--- @type table<number, table<number, boolean>>
+local rendered = {}
+
+--- Clears and redraws the highlights of the lines whose matches changed
+--- @param bufnr number
+--- @param start_line number
+--- @param end_line? number Defaults to the end of the buffer
+function highlighter.invalidate(bufnr, start_line, end_line)
+  local lines = rendered[bufnr]
+  -- large ranges cover the viewport anyway, so skip the per-line bookkeeping
+  if end_line == nil or end_line - start_line > 1000 then
+    nvim.buf_clear_namespace(bufnr, ns, 0, -1)
+    rendered[bufnr] = nil
+  else
+    nvim.buf_clear_namespace(bufnr, ns, start_line, end_line)
+    for line = start_line, end_line - 1 do
+      if lines then lines[line] = nil end
+    end
+  end
+  -- nvim only redraws lines whose text or extmarks changed, so request the rest
+  local range = { start_line, end_line or nvim.buf_line_count(bufnr) }
+  vim.api.nvim__redraw({ buf = bufnr, range = range, flush = false })
+end
 
 --- @param config blink.pairs.HighlightsConfig
 function highlighter.register(config)
@@ -10,28 +34,16 @@ function highlighter.register(config)
   local get_match_highlight = type(config.groups) == 'function' and config.groups
     or function(match) return config.groups[match.stack_height % #config.groups + 1] end
 
-  local watcher_attach = require('blink.pairs.watcher').attach
+  local watcher = require('blink.pairs.watcher')
   local get_line_matches = require('blink.pairs.rust').get_line_matches
   local mappings_config = require('blink.pairs.config').mappings
 
   local cmdline_enabled = config.cmdline
 
-  -- Per-buffer state: tracks which lines have persistent extmarks
-  local buf_ticks = {} -- bufnr -> changedtick at last full render
-  local buf_rendered = {} -- bufnr -> { [line_number] = true }
-
-  -- Per-window viewport: skip on_line entirely when viewport hasn't moved
-  local win_view = {} -- winid -> { bufnr, tick, toprow, botrow }
-
-  nvim.create_autocmd('BufWipeout', {
-    callback = function(ev)
-      buf_ticks[ev.buf] = nil
-      buf_rendered[ev.buf] = nil
-    end,
-  })
+  nvim.create_autocmd('BufWipeout', { callback = function(ev) rendered[ev.buf] = nil end })
 
   nvim.set_decoration_provider(ns, {
-    on_win = function(_, winnr, bufnr, toprow, botrow)
+    on_win = function(_, _, bufnr)
       if
         vim.b[bufnr].pairs == false
         or vim.b[bufnr].blink_pairs == false
@@ -52,39 +64,20 @@ function highlighter.register(config)
       end
 
       -- start parsing, skip if unsupported
-      if not watcher_attach(bufnr) then return false end
+      if not watcher.attach(bufnr) then return false end
 
       -- skip colorization if no groups defined, but keep watcher attached for matchparen
-      if type(config.groups) == 'table' and #config.groups == 0 then return false end
-
-      -- buffer changed, full redraw
-      local tick = nvim.buf_get_changedtick(bufnr)
-      if tick ~= buf_ticks[bufnr] then
-        nvim.buf_clear_namespace(bufnr, ns, 0, -1)
-        buf_ticks[bufnr] = tick
-        buf_rendered[bufnr] = {}
-        win_view[winnr] = { bufnr, tick, toprow, botrow }
-        return true
-      end
-
-      -- if viewport didnt change, skip drawing
-      local wv = win_view[winnr]
-      if wv and wv[1] == bufnr and wv[2] == tick and wv[3] == toprow and wv[4] == botrow then return false end
-
-      -- partial redraw with new viewport
-      win_view[winnr] = { bufnr, tick, toprow, botrow }
-      return true
+      return not (type(config.groups) == 'table' and #config.groups == 0)
     end,
 
     on_line = function(_, _, bufnr, line_number)
-      local rendered = buf_rendered[bufnr]
-      if rendered and rendered[line_number] then return end
-
-      if not rendered then
-        rendered = {}
-        buf_rendered[bufnr] = rendered
+      local lines = rendered[bufnr]
+      if not lines then
+        lines = {}
+        rendered[bufnr] = lines
       end
-      rendered[line_number] = true
+      if lines[line_number] then return end
+      lines[line_number] = true
 
       local matches = get_line_matches(bufnr, line_number)
       for i = 1, #matches do
