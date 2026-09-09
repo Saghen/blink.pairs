@@ -4,12 +4,21 @@ use crate::parser::{
 use std::iter::repeat_n;
 use std::ops::Range;
 
+/// How often (in lines) to snapshot the delimiter stack, so that incremental updates can
+/// resume from the nearest snapshot instead of the start of the buffer
+const CHECKPOINT_INTERVAL: usize = 32;
+
 #[derive(Default)]
 pub struct ParsedBuffer {
     pub lines: Vec<Box<[u8]>>,
     pub matches_by_line: Vec<Vec<Match>>,
     pub indents_by_line: Vec<(u8, u8)>,
     pub state_by_line: Vec<State>,
+    /// `(line, stack)`: the delimiter stack at the start of `line`, sorted by line
+    checkpoints: Vec<(usize, Vec<&'static Token>)>,
+    /// Whether every delimiter is matched, in which case stack heights can be updated
+    /// incrementally
+    balanced: bool,
 }
 
 impl ParsedBuffer {
@@ -57,6 +66,7 @@ impl ParsedBuffer {
             self.lines[start..].iter().map(|line| &**line),
             initial_state,
         )?;
+        let mut end = start;
         for (line, (matches, indent, state)) in (start..).zip(tokenizer) {
             let old_state = if line < new_end {
                 old_end_state
@@ -66,18 +76,127 @@ impl ParsedBuffer {
             self.matches_by_line[line] = matches;
             self.indents_by_line[line] = indent;
             self.state_by_line[line] = state;
+            end = line + 1;
             if line + 1 >= new_end && state == old_state {
                 break;
             }
         }
 
+        let delta = new_end as isize - old_end as isize;
+        if let Some(dirty) = self.incremental_stack_heights(start..end, old_end, delta) {
+            return Some(dirty);
+        }
+
+        // Compare against the previous heights to find the lines that need re-rendering
+        let old_heights: Vec<_> = (self.matches_by_line.iter().flatten())
+            .map(|m| m.stack_height)
+            .collect();
         self.calculate_stack_heights(tab_width);
-        Some(0..self.lines.len())
+        let mut old_heights = old_heights.iter();
+        let mut changed = self.matches_by_line.iter().enumerate().filter_map(|(line, matches)| {
+            let old = old_heights.by_ref().take(matches.len());
+            let changed = matches.iter().zip(old).filter(|(m, h)| m.stack_height != **h);
+            (changed.count() > 0).then_some(line)
+        });
+        let first = changed.next();
+        let last = changed.last().or(first);
+        Some(first.map_or(start, |l| l.min(start))..last.map_or(end, |l| (l + 1).max(end)))
+    }
+
+    /// Fast path for balanced buffers: replays the stack from the nearest checkpoint before the
+    /// edit, and stops at the first checkpoint after it whose stack is unchanged. Returns the
+    /// lines whose stack heights changed, or `None` if the buffer is unbalanced.
+    fn incremental_stack_heights(
+        &mut self,
+        retokenized: Range<usize>,
+        old_end: usize,
+        delta: isize,
+    ) -> Option<Range<usize>> {
+        if !self.balanced {
+            return None;
+        }
+
+        // Checkpoints inside the edited region are stale, those after it shift with the edit
+        let cp = self
+            .checkpoints
+            .partition_point(|(line, _)| *line <= retokenized.start)
+            - 1;
+        let stale_end = self.checkpoints.partition_point(|&(line, _)| {
+            line <= retokenized.start
+                || line < old_end
+                || (line as isize + delta) < retokenized.end as isize
+        });
+        for checkpoint in &mut self.checkpoints[stale_end..] {
+            checkpoint.0 = (checkpoint.0 as isize + delta) as usize;
+        }
+
+        let (cp_line, mut stack) = self.checkpoints[cp].clone();
+        let mut new_checkpoints = vec![];
+        let mut next = stale_end;
+        // Heights are only written once we know the buffer is still balanced
+        let mut updates = vec![];
+        for line in cp_line.. {
+            if line < retokenized.end {
+                if line > cp_line && line % CHECKPOINT_INTERVAL == 0 {
+                    new_checkpoints.push((line, stack.clone()));
+                }
+            } else if let Some((_, old_stack)) =
+                self.checkpoints.get_mut(next).filter(|(l, _)| *l == line)
+            {
+                if *old_stack == stack {
+                    break;
+                }
+                // A different depth almost always means an unmatched delimiter was added or
+                // removed, which we'd otherwise only find out at the end of the buffer
+                if old_stack.len() != stack.len() {
+                    return None;
+                }
+                *old_stack = stack.clone();
+                next += 1;
+            }
+
+            let Some(matches) = self.matches_by_line.get(line) else {
+                // Reached the end of the buffer, every delimiter must be closed
+                if stack.is_empty() {
+                    break;
+                }
+                return None;
+            };
+            for (i, match_) in matches.iter().enumerate() {
+                let stack_height = match match_.kind {
+                    Kind::Opening => {
+                        stack.push(match_.token);
+                        stack.len() - 1
+                    }
+                    Kind::Closing => {
+                        if stack.pop() != Some(match_.token) {
+                            return None;
+                        }
+                        stack.len()
+                    }
+                    Kind::NonPair => continue,
+                };
+                if match_.stack_height != Some(stack_height) {
+                    updates.push((line, i, stack_height));
+                }
+            }
+        }
+
+        self.checkpoints.splice(cp + 1..stale_end, new_checkpoints);
+        let mut dirty = retokenized;
+        for &(line, i, stack_height) in &updates {
+            self.matches_by_line[line][i].stack_height = Some(stack_height);
+            dirty.start = dirty.start.min(line);
+            dirty.end = dirty.end.max(line + 1);
+        }
+        Some(dirty)
     }
 
     fn calculate_stack_heights(&mut self, tab_width: u8) {
         let mut unmatched_openings: Vec<(usize, usize)> = vec![];
-        let mut stack = vec![];
+        let mut stack: Vec<(usize, &mut Match)> = vec![];
+        let mut balanced = true;
+        self.checkpoints.clear();
 
         // Get stack heights for all openings using a traditional stack
         // This results in matching on the closest pairs when there are mismatched
@@ -85,13 +204,18 @@ impl ParsedBuffer {
         // [ ( ( [] (  ) ]
         // 0     11 1  1 0
         for (line, matches) in self.matches_by_line.iter_mut().enumerate() {
+            if line % CHECKPOINT_INTERVAL == 0 {
+                self.checkpoints
+                    .push((line, stack.iter().map(|(_, m)| m.token).collect()));
+            }
+
             'outer: for match_ in matches.iter_mut() {
                 // Opening delimiter
                 if match_.kind == Kind::Opening {
                     stack.push((line, match_));
                 }
                 // Closing delimiter
-                else {
+                else if match_.kind == Kind::Closing {
                     for (i, (_, opening)) in stack.iter().enumerate().rev() {
                         if opening.token == match_.token {
                             // Mark all skipped matches as unmatched
@@ -111,6 +235,7 @@ impl ParsedBuffer {
 
                     // No match found, mark as unmatched
                     match_.stack_height = None;
+                    balanced = false;
                 }
             }
         }
@@ -120,6 +245,7 @@ impl ParsedBuffer {
             unmatched_openings.push((line, match_.col));
         }
         unmatched_openings.sort();
+        self.balanced = balanced && unmatched_openings.is_empty();
 
         // Remove stack heights for unmatched openings
         for (line, col) in unmatched_openings.iter() {
@@ -869,10 +995,13 @@ mod tests {
             let mut lines: Vec<Box<[u8]>> = src.lines().map(|l| l.as_bytes().into()).collect();
             let mut incremental = ParsedBuffer::parse(filetype, 4, lines.clone()).unwrap();
             let mut undo = None;
+            let mut balanced_edits = 0;
             for _ in 0..600 {
-                // undo the previous edit, or keep accumulating edits
+                balanced_edits += incremental.balanced as usize;
+                // undo the previous edit, unless the buffer is still balanced and we want to
+                // keep accumulating edits
                 let (start, old_end, new_lines) = match undo.take() {
-                    Some(edit) if rand(2) == 0 => edit,
+                    Some(edit) if !incremental.balanced || rand(3) == 0 => edit,
                     _ => {
                         let start = rand(lines.len() + 1);
                         let old_end = (start + rand(3)).min(lines.len());
@@ -884,10 +1013,17 @@ mod tests {
                     }
                 };
                 lines.splice(start..old_end, new_lines.clone());
+                let mut rendered = incremental.matches_by_line.clone();
+                rendered.splice(start..old_end, new_lines.iter().map(|_| vec![]));
                 let dirty = incremental
                     .reparse_range(filetype, 4, new_lines, start, old_end)
                     .unwrap();
                 let full = ParsedBuffer::parse(filetype, 4, lines.clone()).unwrap();
+
+                // Everything outside the dirty range must be unchanged
+                for line in (0..lines.len()).filter(|line| !dirty.contains(line)) {
+                    assert_eq!(rendered[line], incremental.matches_by_line[line], "line {line} changed outside of dirty range {dirty:?} (edit {start}..{old_end})");
+                }
 
                 assert_eq!(incremental.lines, lines);
                 assert_eq!(incremental.state_by_line, full.state_by_line);
@@ -898,7 +1034,9 @@ mod tests {
                         "line {line} (edit {start}..{old_end}, dirty {dirty:?})"
                     );
                 }
+                assert_eq!(incremental.balanced, full.balanced);
             }
+            assert!(balanced_edits > 200, "{filetype}: only {balanced_edits} edits on a balanced buffer");
         }
     }
 
