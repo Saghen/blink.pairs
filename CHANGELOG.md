@@ -1,4 +1,31 @@
-## [0.7.0](https://github.com/saghen/blink.pairs/compare/v0.6.0..v0.7.0) - 2026-09-04
+## [0.7.1](https://github.com/saghen/blink.pairs/compare/v0.7.0..v0.7.1) - 2026-09-09
+
+### Features
+
+- add support for angle bracket highlighting/mappings (#136) ([df6ae6a](https://github.com/saghen/blink.pairs/commit/df6ae6ace04365424b94ca52c95fdd66e0ea4da4))
+- buffer text in rust, retokenize until state stabilizes ([5d63378](https://github.com/saghen/blink.pairs/commit/5d6337821e8941d9194ac577dcfb317097c1ba0e))
+- benchmark incremental reparse and queries ([9548509](https://github.com/saghen/blink.pairs/commit/95485092c16484d5ef5ca8b1919f0d48177a5776))
+
+### Bug Fixes
+
+- force redraw updated lines with no text change ([2b01065](https://github.com/saghen/blink.pairs/commit/2b01065acd47ecdc2a181ef7f1d62ab73e660bfd))
+
+### Refactor
+
+- drop unused helpers, simplify buffer lock ([2eb0d5f](https://github.com/saghen/blink.pairs/commit/2eb0d5f3ef790fb550d6ccd576c3164effcca371))
+
+### Documentation
+
+- update parser perf numbers ([e9bf3be](https://github.com/saghen/blink.pairs/commit/e9bf3bee8631e8d39a9fa0345afcc0c67919e9b7))
+
+### Performance
+
+- reduce `Match` size from 88 to 40 bytes ([8adf7eb](https://github.com/saghen/blink.pairs/commit/8adf7ebeaaff8d2b017dae4afd060f7850033736))
+- scan indent before tokenizer loop ([e91c658](https://github.com/saghen/blink.pairs/commit/e91c658dbc5e4701e2c51367e9715e1a5a4191d5))
+- incremental stack height update ([6836d48](https://github.com/saghen/blink.pairs/commit/6836d482eaa4123c1d5c8f2f7269b71d10d361bb))
+- incremental highlighting ([6a0f215](https://github.com/saghen/blink.pairs/commit/6a0f21585e2c7967c0cf89ead6779acb1bd3e52d))
+
+## [0.7.0](https://github.com/saghen/blink.pairs/compare/v0.6.0..v0.7.0) - 2026-09-06
 
 ### Breaking Changes
 

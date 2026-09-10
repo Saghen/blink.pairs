@@ -27,7 +27,7 @@
         overlays = [blink-lib.overlays.default];
       });
 
-    version = "0.7.0";
+    version = "0.7.1";
     blink-pairs-package = {
       rustPlatform,
       vimPlugins,
